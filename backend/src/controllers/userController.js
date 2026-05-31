@@ -25,7 +25,7 @@ exports.claimDaily = async (req, res) => {
     
     // In a real app, check if already claimed today
     // For now, just add balance
-    user.balance += 100;
+    user.balance += 5;
     await user.save();
 
     res.json({ message: 'Daily reward claimed', balance: user.balance });

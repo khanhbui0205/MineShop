@@ -34,6 +34,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { Transaction, UserProfile, StoreItem, PortalTab } from '../types';
 import { TOP_DONATORS } from '../data';
 import api from '../lib/api';
+import { formatVND } from './AdminScreen';
 
 interface DashboardScreenProps {
   user: any;
@@ -55,7 +56,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [storeItems, setStoreItems] = useState<StoreItem[]>([]);
-  const [activeTab, setActiveTab] = useState<PortalTab>('Home');
+  const [activeTab, setActiveTab] = useState<PortalTab>('Trang chủ');
   const [storeFilter, setStoreFilter] = useState<'All' | 'Rank' | 'BattlePass' | 'Cosmetic' | 'Coins'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -66,12 +67,25 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [txRes, itemsRes] = await Promise.all([
+        const [txRes, pkgRes] = await Promise.all([
           api.get('/store/transactions'),
-          api.get('/store')
+          api.get('/packages')
         ]);
         setTransactions(txRes.data);
-        setStoreItems(itemsRes.data);
+        
+        // Map CoinPackage to StoreItem
+        const mappedItems: StoreItem[] = pkgRes.data.map((pkg: any) => ({
+          id: pkg._id,
+          _id: pkg._id,
+          name: pkg.name,
+          description: pkg.description || '',
+          price: pkg.price,
+          currency: 'USD', // Still use USD internally to trigger VNĐ formatting in UI
+          badge: pkg.bonusCoin > 0 ? `+${pkg.bonusCoin.toLocaleString('vi-VN')} Xu Thưởng` : undefined,
+          icon: pkg.category === 'Coin' ? 'payments' : pkg.category === 'VIP' ? 'workspace_premium' : 'stars',
+          type: pkg.category === 'Coin' ? 'Coins' : pkg.category === 'VIP' ? 'Rank' : 'BattlePass',
+        }));
+        setStoreItems(mappedItems);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       }
@@ -82,7 +96,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
   // States for Modals
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('10'); // USD or code
+  const [depositAmount, setDepositAmount] = useState('20000'); // VNĐ
   const [depositCode, setDepositCode] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'refuse' } | null>(null);
 
@@ -111,13 +125,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
         id: `tx-${Date.now()}`,
         type: 'Deposit',
         item: 'Quà đăng nhập hằng ngày',
-        amount: '+100 Coins',
-        coinsChange: 100,
+        amount: '+5 Coins',
+        coinsChange: 5,
         date: 'Vừa xong',
         status: 'Completed'
       };
       setTransactions(prev => [newTx, ...prev]);
-      triggerNotification('Chúc mừng! Đã cộng +100 Coins vào số dư tài khoản của bạn.');
+      triggerNotification('Chúc mừng! Đã cộng +5 Coins vào số dư tài khoản của bạn.');
     } catch (error: any) {
       triggerNotification('Không thể nhận quà. Vui lòng thử lại sau.', 'refuse');
     }
@@ -137,13 +151,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     if (depositCode.trim()) {
       // Simulate Gift Card
       coinsToAdd = 500;
-      cashAdded = 5.00;
+      cashAdded = 50000;
       setDepositCode('');
     } else {
       // Simulate card payment
-      const usd = parseFloat(depositAmount);
-      cashAdded = usd;
-      coinsToAdd = usd === 10 ? 1250 : usd * 100;
+      const vnd = parseInt(depositAmount);
+      cashAdded = vnd;
+      // 1000 VNĐ = 10 Coi
+      coinsToAdd = (vnd / 1000) * 10;
     }
 
     try {
@@ -161,7 +176,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
       const newTx: Transaction = {
         id: `tx-${Date.now()}`,
         type: 'Deposit',
-        item: depositCode.trim() ? 'Nạp thẻ cào / Giftcode' : `Nạp $${cashAdded.toFixed(2)} qua thẻ`,
+        item: depositCode.trim() ? 'Nạp thẻ cào / Giftcode' : `Nạp ${formatVND(cashAdded)} qua thẻ`,
         amount: `+${coinsToAdd} Coins`,
         coinsChange: coinsToAdd,
         date: 'Hôm nay, vừa nạp',
@@ -170,7 +185,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
       setTransactions(prev => [newTx, ...prev]);
       setShowDepositModal(false);
-      triggerNotification(`Giao dịch thành công! Số dư đã được cộng thêm +${coinsToAdd} Coins.`);
+      triggerNotification(`Giao dịch thành công! Số dư đã được cộng thêm +${coinsToAdd.toLocaleString('vi-VN')} Xu.`);
     } catch (error: any) {
       triggerNotification('Giao dịch thất bại. Vui lòng thử lại.', 'refuse');
     }
@@ -180,9 +195,9 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   // 3. Purchase Store Item
   const handlePurchaseItem = async (item: StoreItem) => {
     // If priced in USD
-    if (item.currency === 'USD') {
+    if (item.currency === 'USD' || item.price > 1000) {
       // Prompt simulated payment
-      const confirmBuy = window.confirm(`Bạn có muốn nạp ${item.name} với giá $${item.price.toFixed(2)} không?`);
+      const confirmBuy = window.confirm(`Bạn có muốn nạp ${item.name} với giá ${formatVND(item.price)} không?`);
       if (confirmBuy) {
         try {
           // Find the actual item ID from the backend items if needed, but assuming item.id is valid
@@ -206,17 +221,19 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
     // Checking coins budget
     if (userProfile.balance < item.price) {
-      triggerNotification(`Số dư tài khoản không đủ. Có ${userProfile.balance} Coins, cần ${item.price} Coins.`, 'refuse');
+      triggerNotification(`Số dư tài khoản không đủ. Có ${userProfile.balance.toLocaleString('vi-VN')} Xu, cần ${item.price.toLocaleString('vi-VN')} Xu.`, 'refuse');
       return;
     }
 
+    // Proceed to backend purchase for Package
     try {
-      const response = await api.post(`/store/purchase/${item.id || (item as any)._id}`);
+      const response = await api.post(`/packages/purchase/${item.id || (item as any)._id}`);
       
       setUserProfile(prev => ({
         ...prev,
         balance: response.data.balance,
-        rank: response.data.rank || prev.rank
+        rank: response.data.rank || prev.rank,
+        totalDeposited: response.data.totalDeposited || prev.totalDeposited
       }));
 
       setTransactions(prev => [response.data.transaction, ...prev]);
@@ -276,7 +293,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             EMERALD REALM
           </h1>
           <span className="text-[10px] font-bold text-indigo-300 uppercase bg-indigo-500/10 px-3 mt-2 py-1 rounded-full border border-indigo-500/20">
-            Premium Elite
+            Hạng Bạch Kim
           </span>
         </div>
 
@@ -285,54 +302,54 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           
           {/* Tab HOME */}
           <button 
-            onClick={() => setActiveTab('Home')}
+            onClick={() => setActiveTab('Trang chủ')}
             className={`flex items-center gap-4 py-3 px-4 rounded-lg w-full transition-all duration-300 cursor-pointer ${
-              activeTab === 'Home' 
+              activeTab === 'Trang chủ' 
               ? 'bg-indigo-600 font-semibold text-white shadow-lg shadow-indigo-900/30' 
               : 'text-slate-400 hover:bg-slate-800/60 hover:text-indigo-400 text-left font-medium'
             }`}
           >
             <Home className="w-5 h-5" />
-            <span>Home</span>
+            <span>Trang chủ</span>
           </button>
 
           {/* Tab STORE */}
           <button 
-            onClick={() => setActiveTab('Store')}
+            onClick={() => setActiveTab('Cửa hàng')}
             className={`flex items-center gap-4 py-3 px-4 rounded-lg w-full transition-all duration-300 cursor-pointer ${
-              activeTab === 'Store' 
+              activeTab === 'Cửa hàng' 
               ? 'bg-indigo-600 font-semibold text-white shadow-lg shadow-indigo-900/30' 
               : 'text-slate-400 hover:bg-slate-800/60 hover:text-indigo-400 text-left font-medium'
             }`}
           >
             <ShoppingCart className="w-5 h-5" />
-            <span>Store</span>
+            <span>Cửa hàng</span>
           </button>
 
           {/* Tab HISTORY */}
           <button 
-            onClick={() => setActiveTab('History')}
+            onClick={() => setActiveTab('Lịch sử')}
             className={`flex items-center gap-4 py-3 px-4 rounded-lg w-full transition-all duration-300 cursor-pointer ${
-              activeTab === 'History' 
+              activeTab === 'Lịch sử' 
               ? 'bg-indigo-600 font-semibold text-white shadow-lg shadow-indigo-900/30' 
               : 'text-slate-400 hover:bg-slate-800/60 hover:text-indigo-400 text-left font-medium'
             }`}
           >
             <HistoryIcon className="w-5 h-5" />
-            <span>History</span>
+            <span>Lịch sử</span>
           </button>
 
           {/* Tab SETTINGS */}
           <button 
-            onClick={() => setActiveTab('Settings')}
+            onClick={() => setActiveTab('Cài đặt')}
             className={`flex items-center gap-4 py-3 px-4 rounded-lg w-full transition-all duration-300 cursor-pointer ${
-              activeTab === 'Settings' 
+              activeTab === 'Cài đặt' 
               ? 'bg-indigo-600 font-semibold text-white shadow-lg shadow-indigo-900/30' 
               : 'text-slate-400 hover:bg-slate-800/60 hover:text-indigo-400 text-left font-medium'
             }`}
           >
             <SettingsIcon className="w-5 h-5" />
-            <span>Settings</span>
+            <span>Cài đặt</span>
           </button>
 
         </div>
@@ -343,7 +360,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             onClick={() => setShowDepositModal(true)}
             className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-indigo-900/20 text-center cursor-pointer transition-all"
           >
-            Deposit Now
+            Nạp Xu Ngay
           </button>
         </div>
 
@@ -354,14 +371,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             className="flex items-center gap-4 py-3 px-4 rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-indigo-400 w-full text-left font-medium transition-colors"
           >
             <HelpCircle className="w-5 h-5" />
-            <span>Support</span>
+            <span>Hỗ trợ</span>
           </button>
           <button 
             onClick={onLogout}
             className="flex items-center gap-4 py-3 px-4 rounded-lg text-slate-400 hover:bg-red-950/40 hover:text-red-400 w-full text-left font-medium transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            <span>Logout</span>
+            <span>Đăng xuất</span>
           </button>
         </div>
 
@@ -375,7 +392,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             className="w-8 h-8 rounded-lg object-cover" 
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0rulQzv0m0tH8eJIAhPmYx58pkh5NyqFcZ7Svvt6qbXLfO6aqY5_bnQF5Th-ckwDQ-hLLAnlqhyr4PuY0eG28L2raQPw_kdPGwFOaJFwb4UcifCF8bJuqsTUbJIjXu-bis_PUFZZcKX2Ek8IzbTfCXfjAK0jREK8byOZPKCnr2LitVLUVp_vDMGxHujYq37H0H3vSeel6OkYNhOYdf_2Ic-QSAGMOZ_gOICpQUOEQhcAsz6RM7XAlRc4WtkbLXNhfJ8TZLXMqulo"
           />
-          <span className="font-display font-black text-indigo-400 tracking-wider">REALM PORTAL</span>
+          <span className="font-display font-black text-indigo-400 tracking-wider">CỔNG DỊCH VỤ</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -398,32 +415,32 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
       {/* Mobile Tab-Bar exactly at page bottom */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-40 flex justify-around py-3">
         <button 
-          onClick={() => setActiveTab('Home')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Home' ? 'text-indigo-400' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('Trang chủ')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'Trang chủ' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <Home className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Home</span>
+          <span className="text-[10px] font-semibold">Trang chủ</span>
         </button>
         <button 
-          onClick={() => setActiveTab('Store')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Store' ? 'text-indigo-400' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('Cửa hàng')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'Cửa hàng' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <ShoppingCart className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Store</span>
+          <span className="text-[10px] font-semibold">Cửa hàng</span>
         </button>
         <button 
-          onClick={() => setActiveTab('History')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'History' ? 'text-indigo-400' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('Lịch sử')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'Lịch sử' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <HistoryIcon className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">History</span>
+          <span className="text-[10px] font-semibold">Lịch sử</span>
         </button>
         <button 
-          onClick={() => setActiveTab('Settings')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Settings' ? 'text-indigo-400' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('Cài đặt')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'Cài đặt' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <SettingsIcon className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Settings</span>
+          <span className="text-[10px] font-semibold">Cài đặt</span>
         </button>
       </div>
 
@@ -434,10 +451,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
         <header className="bg-white border-b border-slate-200/80 flex justify-between items-center px-8 h-20 w-full z-30 sticky top-0">
           <div className="text-left">
             <h2 className="font-display font-extrabold text-xl text-slate-950 tracking-tight capitalize">
-              {activeTab} Workspace
+              {activeTab}
             </h2>
             <p className="text-xs text-slate-500 font-sans hidden sm:block font-medium">
-              Tài khoản điều khiển: <span className="font-bold text-indigo-600">{userProfile.username}</span> - Minecraft Account Portal
+              Đang quản lý tài khoản: <span className="font-bold text-indigo-600">{userProfile.username}</span> - Minecraft Portal Việt Nam
             </p>
           </div>
 
@@ -447,7 +464,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-200 hover:scale-102 transition-transform shadow-sm">
               <Coins className="w-4 h-4 text-amber-500" />
               <span className="text-xs font-semibold text-slate-700">
-                Balance: <span className="text-indigo-600 text-sm font-bold font-mono">{userProfile.balance.toLocaleString()}</span> Coins
+                Số dư: <span className="text-indigo-600 text-sm font-bold font-mono">{userProfile.balance.toLocaleString('vi-VN')}</span> Xu
               </span>
             </div>
 
@@ -462,7 +479,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               }`}
             >
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span>{dailyClaimed ? 'Đã điểm danh' : 'Nhận 100 Coins'}</span>
+              <span>{dailyClaimed ? 'Đã điểm danh' : 'Nhận 5 Xu'}</span>
             </button>
 
             {/* Bell Indicator */}
@@ -476,7 +493,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
             {/* Avatar Profile */}
             <div 
-              onClick={() => setActiveTab('Settings')}
+              onClick={() => setActiveTab('Cài đặt')}
               className="w-10 h-10 rounded-full border border-slate-200 overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors shadow"
             >
               <img 
@@ -495,7 +512,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           <AnimatePresence mode="wait">
             
             {/* TABS 1: HOME PANEL */}
-            {activeTab === 'Home' && (
+            {activeTab === 'Trang chủ' && (
               <motion.div 
                 key="home-tab"
                 initial={{ opacity: 0, y: 15 }}
@@ -515,13 +532,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     </div>
 
                     <h2 className="font-display font-extrabold text-3xl text-slate-900 mb-3 leading-tight">
-                      Welcome back, <span className="text-indigo-600 font-black">{userProfile.username}</span>
+                      Chào mừng trở lại, <span className="text-indigo-600 font-black">{userProfile.username}</span>
                     </h2>
                     
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4">
-                      <span>Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'Unknown'}</span>
+                      <span>Tham gia: {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'Mới tham gia'}</span>
                       <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                      <span>UID: {user._id?.substring(0, 8)}</span>
+                      <span>Mã công dân: {user._id?.substring(0, 8)}</span>
                     </div>
                     
                     <p className="text-xs text-slate-500 max-w-xl leading-relaxed font-medium">
@@ -532,7 +549,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <button 
                         onClick={() => {
                           setStoreFilter('All');
-                          setActiveTab('Store');
+                          setActiveTab('Cửa hàng');
                         }}
                         className="py-2.5 px-5 bg-indigo-600 hover:bg-slate-900 text-white font-display font-bold text-xs tracking-wider uppercase rounded shadow-md transition-all cursor-pointer"
                       >
@@ -543,7 +560,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         disabled={dailyClaimed}
                         className="py-2.5 px-5 bg-slate-50 hover:bg-slate-100 text-indigo-600 border border-slate-200 rounded text-xs transition-colors font-semibold cursor-pointer"
                       >
-                        {dailyClaimed ? '✓ Hôm nay đã nhận quà' : '★ Nhận 100 Coins Điểm Danh'}
+                        {dailyClaimed ? '✓ Hôm nay đã nhận quà' : '★ Nhận 5 Xu Điểm Danh'}
                       </button>
                     </div>
                   </div>
@@ -571,13 +588,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100">
                         <Gem className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <span className="text-[10px] text-indigo-600 font-bold tracking-wider font-mono bg-indigo-50 px-2.5 py-1 rounded-full">Coins Balance</span>
+                      <span className="text-[10px] text-indigo-600 font-bold tracking-wider font-mono bg-indigo-50 px-2.5 py-1 rounded-full">Số dư Xu</span>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 font-semibold font-sans md:mb-1">Current Balance</p>
                       <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                        {userProfile.balance.toLocaleString()}{' '}
-                        <span className="text-sm font-normal text-slate-400">Coins</span>
+                        {userProfile.balance.toLocaleString('vi-VN')}{' '}
+                        <span className="text-sm font-normal text-slate-400">Xu Lục Bảo</span>
                       </h3>
                     </div>
                     <div className="absolute bottom-0 left-0 h-1 w-full bg-indigo-500 opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -592,9 +609,9 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <span className="text-[10px] text-slate-500 font-bold tracking-wider bg-slate-50 px-2.5 py-1 rounded-full">Deposited Wallet</span>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 font-semibold font-sans md:mb-1">Total Deposited</p>
+                      <p className="text-xs text-slate-500 font-semibold font-sans md:mb-1">Tổng cộng nạp</p>
                       <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                        ${userProfile.totalDeposited.toFixed(2)}
+                        {formatVND(userProfile.totalDeposited)}
                       </h3>
                     </div>
                     <div className="absolute bottom-0 left-0 h-1 w-full bg-indigo-500 opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -606,10 +623,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100">
                         <Award className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <span className="text-[10px] text-indigo-600 font-bold tracking-wider bg-indigo-50 px-2.5 py-1 rounded-full">VIP Perks</span>
+                      <span className="text-[10px] text-indigo-600 font-bold tracking-wider bg-indigo-50 px-2.5 py-1 rounded-full">Đặc quyền VIP</span>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 font-semibold font-sans md:mb-1">Current VIP Rank</p>
+                      <p className="text-xs text-slate-500 font-semibold font-sans md:mb-1">Hạng VIP hiện tại</p>
                       <h3 className="text-2xl font-black text-indigo-600 tracking-tight">
                         {userProfile.rank}
                       </h3>
@@ -627,8 +644,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     </div>
                     <div>
                       <div className="flex justify-between text-xs text-slate-500 mb-1 font-sans font-medium">
-                        <span>Battle Pass Progress</span>
-                        <span>{userProfile.battlePassXp.toLocaleString()} / 5,000 XP</span>
+                        <span>Tiến trình Battle Pass</span>
+                        <span>{userProfile.battlePassXp.toLocaleString()} / 5.000 XP</span>
                       </div>
                       <div className="w-full h-2 bg-slate-100 rounded-full mt-1.5 overflow-hidden border border-slate-200/60">
                         <div 
@@ -647,7 +664,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   {/* Bento actions */}
                   <div className="lg:col-span-1 flex flex-col gap-4">
                     <h3 className="font-display font-extrabold text-sm text-slate-900 tracking-wide uppercase">
-                      Quick Actions
+                      Thao tác nhanh
                     </h3>
 
                     {/* Action 1: Deposit */}
@@ -671,7 +688,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <button 
                       onClick={() => {
                         setStoreFilter('Rank');
-                        setActiveTab('Store');
+                        setActiveTab('Cửa hàng');
                       }}
                       className="bg-white rounded-xl p-4 flex items-center justify-between group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-indigo-600 cursor-pointer"
                     >
@@ -691,7 +708,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <button 
                       onClick={() => {
                         setStoreFilter('BattlePass');
-                        setActiveTab('Store');
+                        setActiveTab('Cửa hàng');
                       }}
                       className="bg-white rounded-xl p-4 flex items-center justify-between group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-amber-500 cursor-pointer"
                     >
@@ -701,7 +718,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         </div>
                         <div>
                           <span className="block font-bold text-slate-800">Battle Pass Store</span>
-                          <span className="block text-xs text-slate-400 font-medium">Exclusive seasonal loot</span>
+                          <span className="block text-xs text-slate-400 font-medium">Phần thưởng độc quyền theo mùa</span>
                         </div>
                       </div>
                       <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />
@@ -723,7 +740,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                             Lịch sử hoạt động
                           </h4>
                           <button 
-                            onClick={() => setActiveTab('History')}
+                            onClick={() => setActiveTab('Lịch sử')}
                             className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
                           >
                             Xem tất cả
@@ -772,7 +789,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <div className="mt-6 border-t border-slate-100 pt-6">
                         <h4 className="font-display font-extrabold text-xs text-amber-600 uppercase tracking-wider mb-4 flex items-center gap-2">
                           <Trophy className="w-4 h-4 text-amber-500" />
-                          Top Donators this Month
+                          Top Nạp Thẻ Tháng Này
                         </h4>
 
                         <div className="grid grid-cols-3 gap-4 items-end pt-2">
@@ -798,7 +815,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                             <div className="absolute top-0 right-0 w-6 h-6 bg-slate-200 text-slate-600 rounded-bl text-xs font-black flex items-center justify-center">3</div>
                             <img alt="MinerPro user profile avatar" className="w-10 h-10 rounded-full border border-slate-200 mb-2 object-cover shadow-sm" src={TOP_DONATORS[2].avatar} />
                             <span className="text-xs text-slate-800 block font-bold truncate max-w-full">{TOP_DONATORS[2].name}</span>
-                            <span className="text-[10px] text-amber-600 font-mono font-bold">{TOP_DONATORS[2].amount}</span>
+                            <span className="text-[10px] text-amber-600 font-mono font-bold">{formatVND(parseInt(TOP_DONATORS[2].amount.replace(/\D/g, '')) * 1000)}</span>
                           </div>
 
                         </div>
@@ -814,7 +831,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             )}
 
             {/* TABS 2: STORE MODULE */}
-            {activeTab === 'Store' && (
+            {activeTab === 'Cửa hàng' && (
               <motion.div 
                 key="store-tab"
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -909,7 +926,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           <div className="flex flex-col">
                             <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-semibold">Đơn giá</span>
                             <span className="text-lg font-black font-mono text-slate-950">
-                              {item.currency === 'USD' ? `$${item.price.toFixed(2)}` : `${item.price.toLocaleString()} Coins`}
+                              {item.currency === 'USD' || item.price > 1000 ? formatVND(item.price) : `${item.price.toLocaleString('vi-VN')} Xu`}
                             </span>
                           </div>
 
@@ -923,7 +940,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                               : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
                             }`}
                           >
-                            {item.currency === 'USD' ? 'Thanh toán Thẻ' : isPurchasable ? 'Mua ngay' : 'Không đủ Coins'}
+                            {item.currency === 'USD' || item.price > 1000 ? 'Thanh toán Thẻ' : isPurchasable ? 'Mua ngay' : 'Không đủ Xu'}
                           </button>
                         </div>
 
@@ -944,7 +961,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             )}
 
             {/* TABS 3: HISTORY MODULE */}
-            {activeTab === 'History' && (
+            {activeTab === 'Lịch sử' && (
               <motion.div 
                 key="history-tab"
                 initial={{ opacity: 0, y: 15 }}
@@ -966,7 +983,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   <div className="flex gap-4">
                     <div className="bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-200 text-right font-mono">
                       <span className="text-[10px] uppercase text-slate-400 block font-bold">Số giao dịch</span>
-                      <span className="text-sm font-black text-slate-800">{transactions.length} orders</span>
+                      <span className="text-sm font-black text-slate-800">{transactions.length} lượt</span>
                     </div>
                   </div>
                 </div>
@@ -1015,7 +1032,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             )}
 
             {/* TABS 4: SETTINGS PANEL */}
-            {activeTab === 'Settings' && (
+            {activeTab === 'Cài đặt' && (
               <motion.div 
                 key="settings-tab"
                 initial={{ opacity: 0, y: 15 }}
@@ -1170,7 +1187,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       </p>
                     </div>
                     <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 font-mono text-[9px] uppercase font-bold py-1.5 px-4 rounded-full">
-                      MẬT KHẢO - ĐÃ ĐỒNG BỘ
+                      BẢO MẬT - ĐÃ ĐỒNG BỘ
                     </span>
                   </div>
 
@@ -1201,10 +1218,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               </div>
 
               <div>
-                <h4 className="font-display font-bold text-xs text-slate-900 mb-6 uppercase tracking-wider">Quick Links</h4>
+                <h4 className="font-display font-bold text-xs text-slate-900 mb-6 uppercase tracking-wider">Liên kết nhanh</h4>
                 <ul className="space-y-3 text-xs text-slate-500 font-medium">
-                  <li><button onClick={() => setActiveTab('Home')} className="hover:text-indigo-600 transition-colors text-left cursor-pointer">Home Dashboard</button></li>
-                  <li><button onClick={() => setActiveTab('Store')} className="hover:text-indigo-600 transition-colors text-left cursor-pointer">Store & Ranks</button></li>
+                  <li><button onClick={() => setActiveTab('Trang chủ')} className="hover:text-indigo-600 transition-colors text-left cursor-pointer">Trang chủ</button></li>
+                  <li><button onClick={() => setActiveTab('Cửa hàng')} className="hover:text-indigo-600 transition-colors text-left cursor-pointer">Cửa hàng & Hạng</button></li>
                   <li><a href="#" className="hover:text-indigo-600 transition-colors text-left">Community Forums</a></li>
                   <li><a href="#" className="hover:text-indigo-600 transition-colors text-left">Vote for Server</a></li>
                 </ul>
@@ -1272,7 +1289,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 <div className="flex items-center gap-2">
                   <CreditCard className="text-indigo-600 w-5 h-5" />
                   <h3 className="font-display font-extrabold text-base text-slate-950 uppercase tracking-wider">
-                    Simulate Coin Deposit
+                    Nạp Xu Vào Tài Khoản
                   </h3>
                 </div>
                 <button 
@@ -1308,19 +1325,19 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   <label className="font-bold text-slate-700 block uppercase tracking-wide">CÁCH 2: THANH TOÁN THẺ ĐỒNG USD</label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { usd: '5', label: '$5.00 (+500 Co)' },
-                      { usd: '10', label: '$10.00 (+1250 Co)' },
-                      { usd: '20', label: '$20.00 (+2500 Co)' },
+                      { val: '20000', label: '20.000 VNĐ' },
+                      { val: '50000', label: '50.000 VNĐ' },
+                      { val: '100000', label: '100.000 VNĐ' },
                     ].map(opt => (
                       <button
-                        key={opt.usd}
+                        key={opt.val}
                         type="button"
                         onClick={() => {
-                          setDepositAmount(opt.usd);
+                          setDepositAmount(opt.val);
                           setDepositCode(''); // clear coupon
                         }}
                         className={`p-2.5 rounded-lg font-mono font-bold text-[11px] text-center border transition-all cursor-pointer ${
-                          depositAmount === opt.usd && !depositCode
+                          depositAmount === opt.val && !depositCode
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow shadow-indigo-150'
                           : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                         }`}
@@ -1343,7 +1360,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     type="submit"
                     className="flex-1 py-3 rounded-lg bg-indigo-600 text-white font-display font-bold uppercase tracking-wider hover:bg-slate-900 transition-all cursor-pointer text-center text-xs shadow shadow-indigo-150"
                   >
-                    Xác nhận Nạp Coi
+                    Xác nhận Nạp Xu
                   </button>
                 </div>
 

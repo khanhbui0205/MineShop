@@ -115,7 +115,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                   id="login-username"
                   type="text"
                   required
-                  placeholder="Minecraft Username or Email"
+                  placeholder="Tên đăng nhập hoặc Email"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -131,7 +131,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                   id="login-password"
                   type="password"
                   required
-                  placeholder="Password"
+                  placeholder="Mật khẩu"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -147,23 +147,23 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                   />
-                  <span className="group-hover:text-slate-800 transition-colors">Remember Me</span>
+                  <span className="group-hover:text-slate-800 transition-colors">Ghi nhớ đăng nhập</span>
                 </label>
                 <button 
                   type="button"
                   onClick={() => alert('Chức năng khôi phục mật khẩu sẽ được admin liên hệ qua Email đăng ký.')}
                   className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline transition-all"
                 >
-                  Forgot Password?
+                  Quên mật khẩu?
                 </button>
               </div>
 
               {/* Submit Button */}
               <button 
                 type="submit"
-                className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
               >
-                Initialize Login
+                Đăng nhập
                 <LogIn className="w-4 h-4" />
               </button>
             </form>
@@ -176,7 +176,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                 onClick={onNavigateToRegister}
                 className="text-indigo-600 font-bold hover:underline ml-2 uppercase tracking-wider"
               >
-                Create Account
+                Tạo tài khoản
               </button>
             </div>
             
@@ -210,7 +210,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-display font-semibold text-sm text-slate-200">Support</h4>
+            <h4 className="font-display font-semibold text-sm text-slate-200">Hỗ trợ</h4>
             <ul className="space-y-2 text-xs">
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Trung tâm Hỗ trợ</a></li>
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Báo lỗi hệ thống</a></li>
@@ -220,7 +220,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-display font-semibold text-sm text-slate-200">Community</h4>
+            <h4 className="font-display font-semibold text-sm text-slate-200">Cộng đồng</h4>
             <ul className="space-y-2 text-xs">
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Kênh Discord chính thức</a></li>
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Diễn đàn thảo luận</a></li>
@@ -230,12 +230,12 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-display font-semibold text-sm text-slate-200">Legal</h4>
+            <h4 className="font-display font-semibold text-sm text-slate-200">Pháp lý</h4>
             <ul className="space-y-2 text-xs">
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Điều khoản Dịch vụ</a></li>
-              <li><a href="#" className="hover:text-indigo-400 transition-colors">Chính sách bảo mật</a></li>
-              <li><a href="#" className="hover:text-indigo-400 transition-colors">Chính sách cookie</a></li>
-              <li><a href="#" className="hover:text-indigo-400 transition-colors">Luật lệ server</a></li>
+              <li><a href="#" className="hover:text-indigo-400 transition-colors">Chính sách Bảo mật</a></li>
+              <li><a href="#" className="hover:text-indigo-400 transition-colors">Chính sách Cookie</a></li>
+              <li><a href="#" className="hover:text-indigo-400 transition-colors">Luật lệ Server</a></li>
             </ul>
           </div>
 
@@ -246,7 +246,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
             © 2026 Emerald Realm Minecraft. Bản quyền được bảo lưu.
           </p>
           <p className="text-xs text-center md:text-right font-mono">
-            Not affiliated with Mojang AB or Microsoft.
+            Không liên kết với Mojang AB hoặc Microsoft.
           </p>
         </div>
       </footer>

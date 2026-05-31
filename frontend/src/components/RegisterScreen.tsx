@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video } from 'lucide-react';
+import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video, Phone } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import api from '../lib/api';
@@ -17,6 +17,7 @@ interface RegisterScreenProps {
 export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }: RegisterScreenProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -28,11 +29,14 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   
+  const isPhoneValid = phoneNumber.length === 0 || /^(0|\+84)(3[2-9]|5[6-9]|7[0-9]|8[1-9]|9[0-9])[0-9]{7}$/.test(phoneNumber);
+
   const isFormValid = 
     username.trim().length >= 3 && 
     email.includes('@') && 
     hasMinLength && 
     hasUppercase && 
+    isPhoneValid &&
     password === confirmPassword && 
     agreeTerms;
 
@@ -46,6 +50,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
       await api.post('/auth/register', {
         username: username.trim(),
         email: email.trim(),
+        phoneNumber: phoneNumber.trim(),
         password
       });
 
@@ -111,7 +116,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               {/* Username Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-username">
-                  Minecraft Username
+                  Tên người dùng (Minecraft)
                 </label>
                 <div className="relative group">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
@@ -132,7 +137,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               {/* Email Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-email">
-                  Email Address
+                  Địa chỉ Email
                 </label>
                 <div className="relative group">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
@@ -150,10 +155,31 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                 </div>
               </div>
 
+              {/* Phone Input */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-phone">
+                  Số điện thoại
+                </label>
+                <div className="relative group">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
+                    <Phone className="w-4 h-4" />
+                  </span>
+                  <input 
+                    id="reg-phone"
+                    type="text"
+                    placeholder="09xx xxx xxx"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className={`w-full bg-slate-50 border ${!isPhoneValid ? 'border-red-500' : 'border-slate-200'} rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300`}
+                  />
+                </div>
+                {!isPhoneValid && <p className="text-[10px] text-red-500 font-medium">SĐT không hợp lệ (Ví dụ: 0912345678)</p>}
+              </div>
+
               {/* Password Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-password">
-                  Password
+                  Mật khẩu
                 </label>
                 <div className="relative group">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
@@ -196,7 +222,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               {/* Confirm Password Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-confirm">
-                  Confirm Password
+                  Xác nhận mật khẩu
                 </label>
                 <div className="relative group">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
@@ -233,13 +259,13 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                   className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                 />
                 <label className="ml-2.5 text-xs text-slate-500 font-sans leading-relaxed cursor-pointer" htmlFor="agree-terms">
-                  I agree to the{' '}
+                  Tôi đồng ý với{' '}
                   <span onClick={() => alert('Chi tiết Điều khoản sẽ hiển thị khi server chính thức ra mắt.')} className="text-indigo-600 hover:text-indigo-700 transition-colors underline cursor-pointer font-medium">
-                    Terms of Service
+                    Điều khoản Dịch vụ
                   </span>{' '}
                   &{' '}
                   <span onClick={() => alert('Chính sách bảo mật được bảo lưu vô thời hạn.')} className="text-indigo-600 hover:text-indigo-700 transition-colors underline cursor-pointer font-medium">
-                    Privacy Policy
+                    Chính sách Bảo mật
                   </span>
                 </label>
               </div>
@@ -254,7 +280,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
                 }`}
               >
-                {loading ? 'Processing...' : 'Sign Up'}
+                {loading ? 'Đang xử lý...' : 'Đăng ký ngay'}
               </button>
 
 
@@ -262,13 +288,13 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
 
             {/* Back to login */}
             <div className="mt-6 text-center text-xs text-slate-500 font-sans">
-              Already have an account?{' '}
+              Bạn đã có tài khoản?{' '}
               <button 
                 type="button"
                 onClick={onNavigateToLogin}
                 className="text-indigo-600 hover:text-indigo-700 font-bold ml-1 cursor-pointer transition-all"
               >
-                Log In
+                Đăng nhập
               </button>
             </div>
 
@@ -290,7 +316,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Quick Links</h4>
+            <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Liên kết nhanh</h4>
             <ul className="space-y-2 text-xs">
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Trạng thái Server</a></li>
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Bảng xếp hạng</a></li>
@@ -300,7 +326,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Support</h4>
+            <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Hỗ trợ</h4>
             <ul className="space-y-2 text-xs">
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Trung tâm Trợ giúp</a></li>
               <li><a href="#" className="hover:text-indigo-400 transition-colors">Gửi Ticket phản hồi</a></li>
@@ -310,7 +336,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Connect</h4>
+            <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Liên kết</h4>
             <div className="flex gap-4 mb-3">
               <button className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white transition-all">
                 <Swords className="w-4 h-4" />
@@ -334,9 +360,9 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
             © 2016 Emerald Realm. Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
           </p>
           <div className="flex gap-4 text-xs">
-            <a href="#" className="hover:text-indigo-400 transition-all">Terms of Service</a>
-            <a href="#" className="hover:text-indigo-400 transition-all">Privacy Policy</a>
-            <a href="#" className="hover:text-indigo-400 transition-all">Cookie Policy</a>
+            <a href="#" className="hover:text-indigo-400 transition-all">Điều khoản Dịch vụ</a>
+            <a href="#" className="hover:text-indigo-400 transition-all">Chính sách Bảo mật</a>
+            <a href="#" className="hover:text-indigo-400 transition-all">Chính sách Cookie</a>
           </div>
         </div>
       </footer>

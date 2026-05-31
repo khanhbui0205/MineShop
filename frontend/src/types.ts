@@ -5,26 +5,32 @@
 
 export interface Transaction {
   id: string;
+  _id?: string;
   type: 'Deposit' | 'Store Purchase' | 'Battle Pass';
   item: string;
   amount: string;
   coinsChange: number;
-  date: string;
+  date?: string;
+  createdAt?: string;
   status: 'Completed' | 'Claimed' | 'Pending';
 }
 
 export interface UserProfile {
   username: string;
   email: string;
+  phoneNumber?: string;
   balance: number;
   totalDeposited: number;
-  rank: 'Guest' | 'VIP' | 'MVP' | 'MVP+';
+  rank: string;
   battlePassLevel: number;
   battlePassXp: number;
+  isBanned?: boolean;
+  role?: string;
 }
 
 export interface StoreItem {
   id: string;
+  _id?: string;
   name: string;
   description: string;
   price: number;
@@ -34,4 +40,69 @@ export interface StoreItem {
   type: 'Rank' | 'BattlePass' | 'Coins' | 'Cosmetic';
 }
 
-export type PortalTab = 'Home' | 'Store' | 'History' | 'Settings';
+// ── Admin Types ──────────────────────────────────────────────
+
+export interface CoinPackage {
+  id: string;
+  _id?: string;
+  name: string;
+  description?: string;
+  price: number;          // VNĐ
+  coinAmount: number;
+  bonusCoin: number;
+  isVisible: boolean;
+  category: 'Coin' | 'VIP' | 'Pass';
+  createdAt?: string;
+}
+
+export interface Player {
+  id: string;
+  _id?: string;
+  name: string;
+  username?: string;
+  email: string;
+  phoneNumber?: string;
+  avatarUrl?: string;
+  status: 'Online' | 'Offline' | 'Banned';
+  isBanned: boolean;
+  banReason?: string;
+  banExpiresAt?: string | null;
+  rank: string;
+  donated: number;
+  totalDeposited?: number;
+  balance?: number;
+  role: string;
+  lastActive?: string;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  time: string;
+  message: string;
+  detail: string;
+  borderType: 'primary' | 'tertiary' | 'secondary' | 'error';
+}
+
+export interface ActiveSession {
+  id: string;
+  device: string;
+  location: string;
+  ip: string;
+  isCurrent: boolean;
+  time: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  bannedUsers: number;
+  totalRevenue: number;
+  totalTransactions: number;
+  totalPackages: number;
+}
+
+export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Lịch sử' | 'Cài đặt';
+export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Cài đặt';
+export type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'ADMIN';
+  | 'admin-settings';

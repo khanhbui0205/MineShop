@@ -3,9 +3,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const storeRoutes = require('./routes/storeRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const packageRoutes = require('./routes/packageRoutes');
 
 const app = express();
 
@@ -25,19 +28,20 @@ app.use(helmet());
 
 // Enable CORS
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite default port
-  credentials: true
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  credentials: true,
 }));
 
 // Mount routers
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/store', storeRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/packages', packageRoutes);
 
-
-// Basic route
+// Health check
 app.get('/', (req, res) => {
-  res.send('API is running...');
+  res.json({ message: 'MineShop API đang hoạt động', version: '2.0.0' });
 });
 
 // Error handler middleware

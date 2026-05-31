@@ -2,17 +2,16 @@ import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/LoginScreen';
 import RegisterScreen from './components/RegisterScreen';
 import DashboardScreen from './components/DashboardScreen';
+import AdminScreen from './components/AdminScreen';
 import api from './lib/api';
-
-type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD';
+import type { AuthScreenState } from './types';
 
 export default function App() {
   const [screen, setScreen] = useState<AuthScreenState>('LOGIN');
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is already logged in on mount
+  // Kiểm tra phiên đăng nhập khi tải app
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem('token');
@@ -23,12 +22,17 @@ export default function App() {
 
       try {
         const response = await api.get('/auth/me');
-        setCurrentUser(response.data);
-        setScreen('DASHBOARD');
+        const user = response.data;
+        setCurrentUser(user);
+        // Điều hướng theo role
+        if (user.role === 'admin') {
+          setScreen('ADMIN');
+        } else {
+          setScreen('DASHBOARD');
+        }
       } catch (err: any) {
-        console.error('Session check failed:', err);
+        console.error('Kiểm tra phiên thất bại:', err);
         localStorage.removeItem('token');
-        setError('Phiên đăng nhập hết hạn hoặc server không phản hồi.');
       } finally {
         setLoading(false);
       }
@@ -39,7 +43,11 @@ export default function App() {
 
   const handleLoginSuccess = (user: any) => {
     setCurrentUser(user);
-    setScreen('DASHBOARD');
+    if (user.role === 'admin') {
+      setScreen('ADMIN');
+    } else {
+      setScreen('DASHBOARD');
+    }
   };
 
   const handleRegisterSuccess = () => {
@@ -54,40 +62,41 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-6">
-        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-6">
+        <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-800">EMERALD REALM</h2>
-          <p className="text-slate-500 font-medium">Đang tải ứng dụng...</p>
+          <h2 className="text-xl font-bold text-white tracking-wider">EMERALD REALM</h2>
+          <p className="text-slate-400 font-medium mt-1">Đang tải ứng dụng...</p>
         </div>
       </div>
     );
   }
 
-  // Basic Error display if something goes wrong top-level
-  if (error && screen !== 'LOGIN') {
-     console.warn("Recoverable error:", error);
-     // We don't block the screen, just log it, but if user is stuck we might show something.
-  }
-
   return (
-    <div className="bg-[#f8fafc] min-h-screen text-slate-900 select-none font-sans overflow-x-hidden">
+    <div className="bg-slate-50 min-h-screen text-slate-900 font-sans overflow-x-hidden">
       {screen === 'LOGIN' && (
-        <LoginScreen 
+        <LoginScreen
           onLoginSuccess={handleLoginSuccess}
           onNavigateToRegister={() => setScreen('REGISTER')}
         />
       )}
 
       {screen === 'REGISTER' && (
-        <RegisterScreen 
+        <RegisterScreen
           onRegisterSuccess={handleRegisterSuccess}
           onNavigateToLogin={() => setScreen('LOGIN')}
         />
       )}
 
       {screen === 'DASHBOARD' && currentUser && (
-        <DashboardScreen 
+        <DashboardScreen
+          user={currentUser}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {screen === 'ADMIN' && currentUser && (
+        <AdminScreen
           user={currentUser}
           onLogout={handleLogout}
         />
@@ -95,4 +104,3 @@ export default function App() {
     </div>
   );
 }
-
