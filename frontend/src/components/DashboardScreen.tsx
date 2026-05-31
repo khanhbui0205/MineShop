@@ -35,6 +35,9 @@ import type { Transaction, UserProfile, StoreItem, PortalTab } from '../types';
 import { TOP_DONATORS } from '../data';
 import api from '../lib/api';
 import { formatVND } from './AdminScreen';
+import { useNavigate } from 'react-router-dom';
+import paymentService from '../services/paymentService';
+
 
 interface DashboardScreenProps {
   user: any;
@@ -192,54 +195,36 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   };
 
 
+  const navigate = useNavigate();
+
   // 3. Purchase Store Item
   const handlePurchaseItem = async (item: StoreItem) => {
-    // If priced in USD
-    if (item.currency === 'USD' || item.price > 1000) {
-      // Prompt simulated payment
-      const confirmBuy = window.confirm(`Bạn có muốn nạp ${item.name} với giá ${formatVND(item.price)} không?`);
-      if (confirmBuy) {
-        try {
-          // Find the actual item ID from the backend items if needed, but assuming item.id is valid
-          // In this demo, we use the same deposit logic but through the store purchase endpoint
-          const response = await api.post(`/store/purchase/${item.id || (item as any)._id}`);
-          
-          setUserProfile(prev => ({
-            ...prev,
-            balance: response.data.balance,
-            totalDeposited: response.data.totalDeposited
-          }));
-          
-          setTransactions(prev => [response.data.transaction, ...prev]);
-          triggerNotification(`Mua hàng thành công! Đã nạp thành công.`);
-        } catch (error: any) {
-          triggerNotification(error.response?.data?.message || 'Giao dịch thất bại.', 'refuse');
-        }
+    // If it's a paid package (Coins, VIP, BattlePass)
+    if (item.currency === 'USD' || item.price >= 1000) {
+      try {
+        const response = await paymentService.createPayment(item.id || (item as any)._id);
+        navigate(`/payment/checkout/${response.transactionId}`);
+      } catch (error: any) {
+        triggerNotification(error.response?.data?.message || 'Không thể tạo yêu cầu thanh toán. Vui lòng thử lại.', 'refuse');
       }
       return;
     }
 
-    // Checking coins budget
+    // Small coin purchases using balance (if any)
     if (userProfile.balance < item.price) {
-      triggerNotification(`Số dư tài khoản không đủ. Có ${userProfile.balance.toLocaleString('vi-VN')} Xu, cần ${item.price.toLocaleString('vi-VN')} Xu.`, 'refuse');
+      triggerNotification(`Số dư tài khoản không đủ.`, 'refuse');
       return;
     }
 
-    // Proceed to backend purchase for Package
     try {
       const response = await api.post(`/packages/purchase/${item.id || (item as any)._id}`);
-      
       setUserProfile(prev => ({
         ...prev,
         balance: response.data.balance,
-        rank: response.data.rank || prev.rank,
-        totalDeposited: response.data.totalDeposited || prev.totalDeposited
       }));
-
-      setTransactions(prev => [response.data.transaction, ...prev]);
-      triggerNotification(`Thành công! Bạn đã mua thành công sản phẩm: ${item.name}.`);
+      triggerNotification(`Thành công! Bạn đã mua ${item.name}.`);
     } catch (error: any) {
-      triggerNotification(error.response?.data?.message || 'Mua hàng thất bại.', 'refuse');
+      triggerNotification('Mua hàng thất bại.', 'refuse');
     }
   };
 

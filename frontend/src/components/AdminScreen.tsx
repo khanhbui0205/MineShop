@@ -11,11 +11,14 @@ import {
   Bell,
   X,
   AlertCircle,
+  CreditCard,
 } from 'lucide-react';
 import type { AdminTab, CoinPackage, Player, AuditLog, AdminStats } from '../types';
 import DashboardAdmin from './DashboardAdmin';
 import UsersAdmin from './UsersAdmin';
+import PaymentAdmin from './PaymentAdmin';
 import api from '../lib/api';
+
 
 interface AdminScreenProps {
   user: any;
@@ -231,6 +234,7 @@ export default function AdminScreen({ user, onLogout }: AdminScreenProps) {
   const navItems: { label: AdminTab; icon: React.ReactNode }[] = [
     { label: 'Tổng quan', icon: <LayoutDashboard size={18} /> },
     { label: 'Người dùng', icon: <Users size={18} /> },
+    { label: 'Thanh toán', icon: <CreditCard size={18} /> },
     { label: 'Cài đặt', icon: <Settings size={18} /> },
   ];
 
@@ -427,6 +431,18 @@ export default function AdminScreen({ user, onLogout }: AdminScreenProps) {
                     onPlayersLoaded={handlePlayersLoaded}
                     addAuditLog={addAuditLog}
                   />
+                </motion.div>
+              )}
+
+              {activeTab === 'Thanh toán' && (
+                <motion.div
+                  key="payment"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <PaymentAdmin />
                 </motion.div>
               )}
 

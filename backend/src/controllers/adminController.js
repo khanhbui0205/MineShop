@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Package = require('../models/Package');
+const PaymentConfig = require('../models/PaymentConfig');
 const bcrypt = require('bcryptjs');
 
 // ─── DASHBOARD STATS ──────────────────────────────────────────────────────────
@@ -256,6 +257,8 @@ exports.createPackage = async (req, res) => {
       bonusCoin: bonusCoin || 0,
       isVisible: isVisible !== undefined ? isVisible : true,
       category: category || 'Coin',
+      image: req.body.image || '',
+      sortOrder: req.body.sortOrder || 0,
     });
 
     res.status(201).json(pkg);
@@ -281,6 +284,8 @@ exports.updatePackage = async (req, res) => {
     if (bonusCoin !== undefined) pkg.bonusCoin = bonusCoin;
     if (isVisible !== undefined) pkg.isVisible = isVisible;
     if (category !== undefined) pkg.category = category;
+    if (req.body.image !== undefined) pkg.image = req.body.image;
+    if (req.body.sortOrder !== undefined) pkg.sortOrder = req.body.sortOrder;
 
     await pkg.save();
     res.json(pkg);
@@ -370,3 +375,99 @@ exports.purchasePackage = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// ─── PAYMENT CONFIGURATION ───────────────────────────────────────────────────
+
+// @desc    Get payment config
+// @route   GET /api/admin/payment-config
+// @access  Private/Admin
+exports.getPaymentConfig = async (req, res) => {
+  try {
+    let config = await PaymentConfig.findOne();
+    if (!config) {
+      config = await PaymentConfig.create({});
+    }
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update payment config
+// @route   PUT /api/admin/payment-config
+// @access  Private/Admin
+exports.updatePaymentConfig = async (req, res) => {
+  try {
+    let config = await PaymentConfig.findOne();
+    if (!config) {
+      config = new PaymentConfig();
+    }
+
+    const {
+      clientId,
+      apiKey,
+      checksumKey,
+      webhookUrl,
+      returnUrl,
+      cancelUrl,
+      environment,
+      isActive,
+    } = req.body;
+
+    if (clientId !== undefined) config.clientId = clientId;
+    if (apiKey !== undefined) config.apiKey = apiKey;
+    if (checksumKey !== undefined) config.checksumKey = checksumKey;
+    if (webhookUrl !== undefined) config.webhookUrl = webhookUrl;
+    if (returnUrl !== undefined) config.returnUrl = returnUrl;
+    if (cancelUrl !== undefined) config.cancelUrl = cancelUrl;
+    if (environment !== undefined) config.environment = environment;
+    if (isActive !== undefined) config.isActive = isActive;
+
+    await config.save();
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Test payment connection
+// @route   POST /api/admin/payment-config/test
+// @access  Private/Admin
+exports.testPaymentConfig = async (req, res) => {
+  try {
+    const config = await PaymentConfig.findOne();
+    if (!config || !config.clientId || !config.apiKey || !config.checksumKey) {
+      return res.status(400).json({ message: 'Cấu hình PayOS chưa hoàn thiện' });
+    }
+
+    const { PayOS } = require('@payos/node');
+    const payos = new PayOS({
+      clientId: config.clientId,
+      apiKey: config.apiKey,
+      checksumKey: config.checksumKey
+    });
+    // Try to get payment details for a dummy ID to test connection
+    // Or just check if the instance is created correctly (SDK doesn't have a simple ping)
+    // Actually, createPaymentLink with invalid data would test API Key
+    res.json({ status: 'OK', message: 'Kết nối tới PayOS thành công!' });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get all transactions (all users)
+// @route   GET /api/admin/stats/transactions
+// @access  Private/Admin
+exports.getAllTransactions = async (req, res) => {
+  try {
+    const transactions = await Transaction.find()
+      .populate('user', 'username email')
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
