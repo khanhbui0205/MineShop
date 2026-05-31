@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginScreen from './components/LoginScreen';
 import RegisterScreen from './components/RegisterScreen';
 import DashboardScreen from './components/DashboardScreen';
 import AdminScreen from './components/AdminScreen';
+import CheckoutPage from './features/payment/CheckoutPage';
+import SuccessPage from './features/payment/SuccessPage';
+import FailedPage from './features/payment/FailedPage';
+import HistoryPage from './features/payment/HistoryPage';
+import MainLayout from './components/MainLayout';
 import api from './lib/api';
-import type { AuthScreenState } from './types';
+
+import { Toaster } from 'react-hot-toast';
 
 export default function App() {
-  const [screen, setScreen] = useState<AuthScreenState>('LOGIN');
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,14 +28,7 @@ export default function App() {
 
       try {
         const response = await api.get('/auth/me');
-        const user = response.data;
-        setCurrentUser(user);
-        // Điều hướng theo role
-        if (user.role === 'admin') {
-          setScreen('ADMIN');
-        } else {
-          setScreen('DASHBOARD');
-        }
+        setCurrentUser(response.data);
       } catch (err: any) {
         console.error('Kiểm tra phiên thất bại:', err);
         localStorage.removeItem('token');
@@ -43,21 +42,11 @@ export default function App() {
 
   const handleLoginSuccess = (user: any) => {
     setCurrentUser(user);
-    if (user.role === 'admin') {
-      setScreen('ADMIN');
-    } else {
-      setScreen('DASHBOARD');
-    }
-  };
-
-  const handleRegisterSuccess = () => {
-    setScreen('LOGIN');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setCurrentUser(null);
-    setScreen('LOGIN');
   };
 
   if (loading) {
@@ -73,34 +62,86 @@ export default function App() {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen text-slate-900 font-sans overflow-x-hidden">
-      {screen === 'LOGIN' && (
-        <LoginScreen
-          onLoginSuccess={handleLoginSuccess}
-          onNavigateToRegister={() => setScreen('REGISTER')}
-        />
-      )}
+    <Router>
+      <div className="bg-slate-50 min-h-screen text-slate-900 font-sans overflow-x-hidden">
+        <Toaster position="top-right" />
+        <Routes>
+          {/* Public Routes */}
+          <Route 
+            path="/login" 
+            element={currentUser ? <Navigate to="/" /> : <LoginScreen onLoginSuccess={handleLoginSuccess} onNavigateToRegister={() => {}} />} 
+          />
+          <Route 
+            path="/register" 
+            element={currentUser ? <Navigate to="/" /> : <RegisterScreen onRegisterSuccess={() => {}} onNavigateToLogin={() => {}} />} 
+          />
 
-      {screen === 'REGISTER' && (
-        <RegisterScreen
-          onRegisterSuccess={handleRegisterSuccess}
-          onNavigateToLogin={() => setScreen('LOGIN')}
-        />
-      )}
+          {/* Protected Routes */}
+          <Route 
+            path="/" 
+            element={
+              currentUser ? (
+                currentUser.role === 'admin' ? (
+                  <Navigate to="/admin" />
+                ) : (
+                  <DashboardScreen user={currentUser} onLogout={handleLogout} />
+                )
+              ) : (
+                <Navigate to="/login" />
+              )
+            } 
+          />
 
-      {screen === 'DASHBOARD' && currentUser && (
-        <DashboardScreen
-          user={currentUser}
-          onLogout={handleLogout}
-        />
-      )}
+          <Route 
+            path="/admin" 
+            element={
+              currentUser?.role === 'admin' ? (
+                <AdminScreen user={currentUser} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            } 
+          />
 
-      {screen === 'ADMIN' && currentUser && (
-        <AdminScreen
-          user={currentUser}
-          onLogout={handleLogout}
-        />
-      )}
-    </div>
+          {/* Payment Routes with Shared Layout */}
+          <Route 
+            path="/payment/checkout/:id" 
+            element={
+              currentUser 
+              ? <MainLayout user={currentUser} onLogout={handleLogout}><CheckoutPage /></MainLayout> 
+              : <Navigate to="/login" />
+            } 
+          />
+          <Route 
+            path="/payment/success/:id" 
+            element={
+              currentUser 
+              ? <MainLayout user={currentUser} onLogout={handleLogout}><SuccessPage /></MainLayout> 
+              : <Navigate to="/login" />
+            } 
+          />
+          <Route 
+            path="/payment/failed" 
+            element={
+              currentUser 
+              ? <MainLayout user={currentUser} onLogout={handleLogout}><FailedPage /></MainLayout> 
+              : <Navigate to="/login" />
+            } 
+          />
+          <Route 
+            path="/payment/history" 
+            element={
+              currentUser 
+              ? <MainLayout user={currentUser} onLogout={handleLogout}><HistoryPage /></MainLayout> 
+              : <Navigate to="/login" />
+            } 
+          />
+
+
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }

@@ -14,6 +14,10 @@ const {
   updatePackage,
   deletePackage,
   togglePackage,
+  getPaymentConfig,
+  updatePaymentConfig,
+  testPaymentConfig,
+  getAllTransactions,
 } = require('../controllers/adminController');
 
 // Tất cả routes admin đều cần xác thực + quyền admin
@@ -21,6 +25,7 @@ router.use(protect, admin);
 
 // ─── Stats ─────────────────────────────
 router.get('/stats', getStats);
+router.get('/stats/transactions', getAllTransactions);
 
 // ─── User Management ───────────────────
 router.get('/users', getUsers);
@@ -36,5 +41,10 @@ router.post('/packages', createPackage);
 router.put('/packages/:id', updatePackage);
 router.delete('/packages/:id', deletePackage);
 router.patch('/packages/:id/toggle', togglePackage);
+
+// ─── Payment Config ─────────────────────
+router.get('/payment-config', getPaymentConfig);
+router.put('/payment-config', updatePaymentConfig);
+router.post('/payment-config/test', testPaymentConfig);
 
 module.exports = router;

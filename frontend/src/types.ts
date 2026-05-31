@@ -103,6 +103,6 @@ export interface AdminStats {
 }
 
 export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Lịch sử' | 'Cài đặt';
-export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Cài đặt';
+export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Thanh toán' | 'Cài đặt';
 export type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'ADMIN';
-  | 'admin-settings';
+

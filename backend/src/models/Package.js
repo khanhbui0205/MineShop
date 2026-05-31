@@ -29,6 +29,14 @@ const packageSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    image: {
+      type: String,
+      default: '',
+    },
+    sortOrder: {
+      type: Number,
+      default: 0,
+    },
     category: {
       type: String,
       enum: ['Coin', 'VIP', 'Pass'],

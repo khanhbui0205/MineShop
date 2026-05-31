@@ -24,10 +24,26 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    package: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Package',
+    },
+    orderCode: {
+      type: Number,
+      unique: true,
+    },
+    paymentMethod: {
+      type: String,
+      default: 'PayOS',
+    },
+    transactionId: String,
+    payosOrderId: String,
+    paymentUrl: String,
+    qrCode: String,
     status: {
       type: String,
-      enum: ['Completed', 'Claimed', 'Pending'],
-      default: 'Completed',
+      enum: ['pending', 'paid', 'failed', 'cancelled', 'expired', 'Completed', 'Claimed'],
+      default: 'pending',
     },
   },
   {
