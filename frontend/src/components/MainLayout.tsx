@@ -4,19 +4,13 @@ import {
   ShoppingCart, 
   History as HistoryIcon, 
   Settings as SettingsIcon, 
-  HelpCircle, 
   LogOut, 
-  Bell, 
-  PlusCircle, 
-  Star, 
   Coins, 
   Swords,
-  LayoutDashboard,
   ShieldCheck
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../lib/api';
-import { formatVND } from './AdminScreen';
 
 interface MainLayoutProps {
   children: React.ReactNode;

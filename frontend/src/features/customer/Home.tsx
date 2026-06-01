@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Flame, Wifi, Users, Activity } from 'lucide-react';
 import type { UserProfile } from '../../types';

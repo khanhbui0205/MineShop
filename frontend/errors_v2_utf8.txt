@@ -1,0 +1,5 @@
+﻿src/components/example_components/Checkout.tsx(6,8): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(16,3): error TS6133: 'XCircle' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(17,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(20,40): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/features/customer/Home.tsx(6,1): error TS6133: 'React' is declared but its value is never read.

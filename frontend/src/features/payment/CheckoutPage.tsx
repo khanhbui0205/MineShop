@@ -154,7 +154,7 @@ export default function CheckoutPage() {
               {/* QR Code */}
               <div className="relative p-6 bg-white rounded-3xl shadow-xl border border-slate-100 transition-transform hover:scale-[1.02]">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(transaction.qrCode)}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(transaction.qrCode || '')}`} 
                   alt="Payment QR" 
                   className="w-48 h-48 md:w-56 md:h-56"
                 />

@@ -1,0 +1,47 @@
+﻿src/components/DashboardScreen.tsx(6,8): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Admin.tsx(6,8): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Admin.tsx(7,1): error TS6133: 'motion' is declared but its value is never read.
+src/components/example_components/Admin.tsx(8,21): error TS6133: 'ShieldAlert' is declared but its value is never read.
+src/components/example_components/Admin.tsx(8,48): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/components/example_components/Admin.tsx(11,16): error TS6133: 'setLogs' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(6,8): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(16,3): error TS6133: 'XCircle' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(17,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/components/example_components/Checkout.tsx(20,40): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/components/example_components/Header.tsx(6,8): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/History.tsx(6,8): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/History.tsx(9,29): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/components/example_components/Home.tsx(6,1): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Home.tsx(8,29): error TS6133: 'ShieldAlert' is declared but its value is never read.
+src/components/example_components/Home.tsx(8,65): error TS6133: 'ExternalLink' is declared but its value is never read.
+src/components/example_components/Home.tsx(8,79): error TS6133: 'RefreshCw' is declared but its value is never read.
+src/components/example_components/Home.tsx(9,1): error TS6133: 'StoreItem' is declared but its value is never read.
+src/components/example_components/Home.tsx(9,27): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/components/example_components/Settings.tsx(7,1): error TS6192: All imports in import declaration are unused.
+src/components/example_components/Settings.tsx(8,67): error TS6133: 'HelpCircle' is declared but its value is never read.
+src/components/example_components/Sidebar.tsx(6,1): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Store.tsx(6,1): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Store.tsx(9,29): error TS2307: Cannot find module '../data' or its corresponding type declarations.
+src/components/example_components/Store.tsx(10,27): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/components/example_components/Store.tsx(43,27): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/components/example_components/Store.tsx(43,33): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+src/components/example_components/Store.tsx(89,37): error TS7006: Parameter 'benefit' implicitly has an 'any' type.
+src/components/example_components/Store.tsx(89,46): error TS7006: Parameter 'bIdx' implicitly has an 'any' type.
+src/components/example_components/Success.tsx(6,1): error TS6133: 'React' is declared but its value is never read.
+src/components/example_components/Success.tsx(8,10): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/components/example_components/Success.tsx(8,44): error TS6133: 'Sparkles' is declared but its value is never read.
+src/components/example_components/Success.tsx(9,40): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/components/MainLayout.tsx(7,3): error TS6133: 'HelpCircle' is declared but its value is never read.
+src/components/MainLayout.tsx(9,3): error TS6133: 'Bell' is declared but its value is never read.
+src/components/MainLayout.tsx(10,3): error TS6133: 'PlusCircle' is declared but its value is never read.
+src/components/MainLayout.tsx(11,3): error TS6133: 'Star' is declared but its value is never read.
+src/components/MainLayout.tsx(14,3): error TS6133: 'LayoutDashboard' is declared but its value is never read.
+src/components/MainLayout.tsx(19,1): error TS6133: 'formatVND' is declared but its value is never read.
+src/components/PaymentAdmin.tsx(2,1): error TS6133: 'motion' is declared but its value is never read.
+src/components/PaymentAdmin.tsx(6,3): error TS6133: 'Filter' is declared but its value is never read.
+src/components/PaymentAdmin.tsx(34,10): error TS6133: 'loadingConfig' is declared but its value is never read.
+src/components/SettingsAdmin.tsx(1,20): error TS1484: 'FormEvent' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/SettingsAdmin.tsx(18,10): error TS1484: 'ActiveSession' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/features/customer/Home.tsx(6,1): error TS6133: 'React' is declared but its value is never read.
+src/features/payment/CheckoutPage.tsx(157,108): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | boolean'.
+  Type 'undefined' is not assignable to type 'string | number | boolean'.

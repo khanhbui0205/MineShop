@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { 
   CreditCard, 
   Search, 
-  Filter, 
   CheckCircle2, 
   Clock, 
   XCircle, 
@@ -31,7 +29,6 @@ export default function PaymentAdmin() {
   });
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTxs, setLoadingTxs] = useState(true);
-  const [loadingConfig, setLoadingConfig] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'transactions' | 'config'>('transactions');
@@ -48,7 +45,7 @@ export default function PaymentAdmin() {
     } catch (error) {
       console.error('Failed to fetch config');
     } finally {
-      setLoadingConfig(false);
+      // Done fetching
     }
   };
 
