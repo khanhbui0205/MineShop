@@ -1,6 +1,8 @@
 # dependencies
 node_modules/
 **/node_modules/
+frontend/src/components/example_components/
+**/example_components/
 
 # env
 .env
