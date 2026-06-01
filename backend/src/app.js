@@ -51,8 +51,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Xử lý thêm preflight OPTIONS cho chắc chắn (Dùng regex cho Express 5)
-app.options('(.*)', cors());
+// Xử lý thêm preflight OPTIONS bằng Regex literal (Tương thích tốt nhất với Express 5)
+app.options(/.* / , cors());
 
 // Mount routers
 app.use('/api/auth', authRoutes);
