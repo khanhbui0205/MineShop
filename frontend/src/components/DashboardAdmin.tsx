@@ -33,13 +33,13 @@ export default function DashboardAdmin({
   const [description, setDescription] = useState('');
   const [isVisible, setIsVisible] = useState(true);
   const [category, setCategory] = useState<'Coin' | 'VIP' | 'Pass'>('Coin');
+  const [commands, setCommands] = useState('');
 
   const filteredPackages = packages.filter(pkg => pkg.category === activeTab);
 
   const openCreateModal = () => {
     setEditingPackage(null);
-    setName(''); setPrice(50000); setCoinAmount(500); setBonusCoin(0);
-    setDescription(''); setIsVisible(true); setCategory(activeTab);
+    setDescription(''); setIsVisible(true); setCategory(activeTab); setCommands('');
     setIsModalOpen(true);
   };
 
@@ -52,6 +52,7 @@ export default function DashboardAdmin({
     setDescription(pkg.description || '');
     setIsVisible(pkg.isVisible);
     setCategory(pkg.category);
+    setCommands(pkg.commands ? pkg.commands.join('\n') : '');
     setIsModalOpen(true);
   };
 
@@ -61,6 +62,7 @@ export default function DashboardAdmin({
     const pkgData = {
       name, price, coinAmount, bonusCoin, description,
       isVisible, category,
+      commands: commands.split('\n').map(cmd => cmd.trim()).filter(cmd => cmd !== ''),
     };
     if (editingPackage) {
       onUpdatePackage({ ...pkgData, id: editingPackage.id, _id: editingPackage._id });
@@ -364,6 +366,18 @@ export default function DashboardAdmin({
                       : <ToggleLeft size={28} className="text-slate-500" />
                     }
                   </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Commands (Minecraft)</label>
+                  <textarea
+                    value={commands}
+                    onChange={e => setCommands(e.target.value)}
+                    placeholder="eco give {player} 100&#10;lp user {player} parent add vip"
+                    rows={4}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Sử dụng {'{player}'} để thay thế tên người chơi. Mỗi dòng 1 lệnh.</p>
                 </div>
 
                 <div className="flex gap-3 pt-2">

@@ -27,8 +27,8 @@ import {
   Mail, 
   ArrowUpRight, 
   X,
-  CreditCard,
   Swords,
+  Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Transaction, UserProfile, StoreItem, PortalTab } from '../types';
@@ -87,6 +87,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           badge: pkg.bonusCoin > 0 ? `+${pkg.bonusCoin.toLocaleString('vi-VN')} Xu Thưởng` : undefined,
           icon: pkg.category === 'Coin' ? 'payments' : pkg.category === 'VIP' ? 'workspace_premium' : 'stars',
           type: pkg.category === 'Coin' ? 'Coins' : pkg.category === 'VIP' ? 'Rank' : 'BattlePass',
+          // New fields for details
+          bonusCoin: pkg.bonusCoin,
+          coinAmount: pkg.coinAmount,
+          commands: pkg.commands || [],
+          rights: pkg.rights || [],
+          category: pkg.category,
+          image: pkg.image,
         }));
         setStoreItems(mappedItems);
       } catch (error) {
@@ -98,10 +105,18 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
 
   // States for Modals
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('20000'); // VNĐ
-  const [depositCode, setDepositCode] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'refuse' } | null>(null);
+
+  // Package Purchase & Player Validation States
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<StoreItem | null>(null);
+  const [playerNameInput, setPlayerNameInput] = useState('');
+  const [isPlayerVerified, setIsPlayerVerified] = useState(false);
+  const [isCheckingPlayer, setIsCheckingPlayer] = useState(false);
+
+  // New: Package Detail Modal
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<StoreItem | null>(null);
 
   // Helper function to trigger interactive popups
   const triggerNotification = (message: string, type: 'success' | 'refuse' = 'success') => {
@@ -126,6 +141,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
       const newTx: Transaction = {
         id: `tx-${Date.now()}`,
+        _id: `tx-${Date.now()}`,
         type: 'Deposit',
         item: 'Quà đăng nhập hằng ngày',
         amount: '+5 Coins',
@@ -140,92 +156,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     }
   };
 
-  // 2. Perform Deposit Code / USD top up
-  const handlePerformDeposit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!depositCode.trim() && !depositAmount) {
-      alert('Vui lòng điền thông tin nạp tiền');
-      return;
-    }
-
-    let coinsToAdd = 0;
-    let cashAdded = 0;
-
-    if (depositCode.trim()) {
-      // Simulate Gift Card
-      coinsToAdd = 500;
-      cashAdded = 50000;
-      setDepositCode('');
-    } else {
-      // Simulate card payment
-      const vnd = parseInt(depositAmount);
-      cashAdded = vnd;
-      // 1000 VNĐ = 10 Coi
-      coinsToAdd = (vnd / 1000) * 10;
-    }
-
-    try {
-      const response = await api.post('/users/deposit', {
-        amount: cashAdded,
-        coins: coinsToAdd
-      });
-
-      setUserProfile(prev => ({
-        ...prev,
-        balance: response.data.balance,
-        totalDeposited: response.data.totalDeposited
-      }));
-
-      const newTx: Transaction = {
-        id: `tx-${Date.now()}`,
-        type: 'Deposit',
-        item: depositCode.trim() ? 'Nạp thẻ cào / Giftcode' : `Nạp ${formatVND(cashAdded)} qua thẻ`,
-        amount: `+${coinsToAdd} Coins`,
-        coinsChange: coinsToAdd,
-        date: 'Hôm nay, vừa nạp',
-        status: 'Completed'
-      };
-
-      setTransactions(prev => [newTx, ...prev]);
-      setShowDepositModal(false);
-      triggerNotification(`Giao dịch thành công! Số dư đã được cộng thêm +${coinsToAdd.toLocaleString('vi-VN')} Xu.`);
-    } catch (error: any) {
-      triggerNotification('Giao dịch thất bại. Vui lòng thử lại.', 'refuse');
-    }
-  };
 
 
   const navigate = useNavigate();
 
-  // 3. Purchase Store Item
-  const handlePurchaseItem = async (item: StoreItem) => {
-    // If it's a paid package (Coins, VIP, BattlePass)
-    if (item.currency === 'USD' || item.price >= 1000) {
-      try {
-        const response = await paymentService.createPayment(item.id || (item as any)._id);
-        navigate(`/payment/checkout/${response.transactionId}`);
-      } catch (error: any) {
-        triggerNotification(error.response?.data?.message || 'Không thể tạo yêu cầu thanh toán. Vui lòng thử lại.', 'refuse');
-      }
-      return;
-    }
-
-    // Small coin purchases using balance (if any)
-    if (userProfile.balance < item.price) {
-      triggerNotification(`Số dư tài khoản không đủ.`, 'refuse');
-      return;
-    }
-
-    try {
-      const response = await api.post(`/packages/purchase/${item.id || (item as any)._id}`);
-      setUserProfile(prev => ({
-        ...prev,
-        balance: response.data.balance,
-      }));
-      triggerNotification(`Thành công! Bạn đã mua ${item.name}.`);
-    } catch (error: any) {
-      triggerNotification('Mua hàng thất bại.', 'refuse');
-    }
+  const handlePurchaseItem = (item: StoreItem) => {
+    // Show details first
+    setSelectedDetail(item);
+    setShowDetailModal(true);
   };
 
 
@@ -236,6 +174,45 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const handleCheckPlayer = async () => {
+    if (!playerNameInput.trim()) {
+      triggerNotification('Vui lòng nhập tên nhân vật', 'refuse');
+      return;
+    }
+
+    try {
+      setIsCheckingPlayer(true);
+      const response = await api.post('/minecraft/check-player', { playerName: playerNameInput.trim() });
+      if (response.data.exists) {
+        setIsPlayerVerified(true);
+        triggerNotification('Xác thực người chơi thành công!');
+      } else {
+        setIsPlayerVerified(false);
+        triggerNotification('Không tìm thấy người chơi trên server.', 'refuse');
+      }
+    } catch (error: any) {
+      triggerNotification(error.response?.data?.message || 'Lỗi khi kiểm tra người chơi.', 'refuse');
+      setIsPlayerVerified(false);
+    } finally {
+      setIsCheckingPlayer(false);
+    }
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!selectedPackage) return;
+    if (!isPlayerVerified) {
+      triggerNotification('Vui lòng xác thực tên nhân vật trước khi thanh toán.', 'refuse');
+      return;
+    }
+
+    try {
+      const response = await paymentService.createPayment(selectedPackage.id || (selectedPackage as any)._id, playerNameInput.trim());
+      navigate(`/payment/checkout/${response.transactionId}`);
+    } catch (error: any) {
+      triggerNotification(error.response?.data?.message || 'Không thể tạo yêu cầu thanh toán. Vui lòng thử lại.', 'refuse');
+    }
+  };
 
 
   return (
@@ -339,12 +316,16 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
         </div>
 
-        {/* Deposit Button Exactly like screenshot 1 but clean Professional style */}
+        {/* Deposit Button - Link to Store with Coins filter */}
         <div className="px-4 mt-auto py-2">
           <button 
-            onClick={() => setShowDepositModal(true)}
-            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-indigo-900/20 text-center cursor-pointer transition-all"
+            onClick={() => {
+              setStoreFilter('Coins');
+              setActiveTab('Cửa hàng');
+            }}
+            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-indigo-900/20 text-center cursor-pointer transition-all flex items-center justify-center gap-2"
           >
+            <PlusCircle className="w-4 h-4" />
             Nạp Xu Ngay
           </button>
         </div>
@@ -382,7 +363,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setShowDepositModal(true)}
+            onClick={() => {
+              setStoreFilter('Coins');
+              setActiveTab('Cửa hàng');
+            }}
             className="p-2 bg-indigo-600/25 text-indigo-400 rounded-full border border-indigo-500/20"
           >
             <PlusCircle className="w-4 h-4" />
@@ -654,7 +638,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
                     {/* Action 1: Deposit */}
                     <button 
-                      onClick={() => setShowDepositModal(true)}
+                      onClick={() => {
+                        setStoreFilter('Coins');
+                        setActiveTab('Cửa hàng');
+                      }}
                       className="bg-white rounded-xl p-4 flex items-center justify-between group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-indigo-600 cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
@@ -747,8 +734,12 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                                 <tr key={tx.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors text-slate-700">
                                   <td className="py-3.5 px-4 font-bold text-slate-900">
                                     {tx.type}
+                                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">#{tx.transactionId || tx._id?.substring(0, 8)}</div>
                                   </td>
-                                  <td className="py-3.5 px-4 text-slate-500 font-medium">{tx.item}</td>
+                                  <td className="py-3.5 px-4 text-slate-500 font-medium">
+                                    {tx.item}
+                                    {tx.playerName && <div className="text-[10px] text-indigo-500 font-bold uppercase mt-0.5">{tx.playerName}</div>}
+                                  </td>
                                   <td className={`py-3.5 px-4 font-mono font-bold ${tx.coinsChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {tx.amount}
                                   </td>
@@ -976,36 +967,59 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-100 text-[11px] text-slate-450 uppercase font-bold">
-                        <th className="py-3.5 px-4">Mã Giao dịch</th>
-                        <th className="py-3.5 px-4">Yêu cầu giao dịch</th>
-                        <th className="py-3.5 px-4">Chi tiết Vật phẩm</th>
-                        <th className="py-3.5 px-4">Sự biến động</th>
+                      <tr className="border-b border-slate-100 text-[11px] text-slate-400 uppercase font-bold text-center">
+                        <th className="py-3.5 px-4 text-left">Mã đơn</th>
+                        <th className="py-3.5 px-4">Yêu cầu</th>
+                        <th className="py-3.5 px-4 text-left">Chi tiết Vật phẩm</th>
+                        <th className="py-3.5 px-4">Biến động</th>
                         <th className="py-3.5 px-4">Thời gian</th>
                         <th className="py-3.5 px-4 text-right">Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody className="text-xs">
                       {transactions.map((tx) => (
-                        <tr key={tx.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors text-slate-700">
-                          <td className="py-4 px-4 font-mono text-slate-400 font-semibold uppercase">{tx.id}</td>
-                          <td className="py-4 px-4">
+                        <tr key={tx._id || tx.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors text-slate-700">
+                          <td className="py-4 px-4 font-mono text-slate-400 font-semibold uppercase">
+                            #{tx.orderCode || tx.id?.substring(0, 8)}
+                            {tx.transactionId && <div className="text-[9px] text-slate-300">ID: {tx.transactionId}</div>}
+                          </td>
+                          <td className="py-4 px-4 text-center">
                             <span className={`inline-block px-2 py-0.5 text-[9px] font-mono tracking-widest font-bold rounded-lg uppercase ${
                               tx.type === 'Deposit' 
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
                               : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
                             }`}>
-                              {tx.type === 'Deposit' ? 'Nạp tiền Coi' : 'Cửa hàng shop'}
+                              {tx.type === 'Deposit' ? 'Nạp tiền' : 'Cửa hàng'}
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-slate-900 font-bold">{tx.item}</td>
-                          <td className={`py-4 px-4 font-mono font-bold ${tx.coinsChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          <td className="py-4 px-4 text-slate-900 font-bold">
+                            {tx.item}
+                            {tx.playerName && <div className="text-[9px] text-indigo-500 font-black">PLAYER: {tx.playerName}</div>}
+                          </td>
+                          <td className={`py-4 px-4 font-mono font-bold text-center ${tx.coinsChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                             {tx.amount}
                           </td>
-                          <td className="py-4 px-4 text-slate-400 font-medium">{tx.date}</td>
-                          <td className="py-4 px-4 text-right flex items-center justify-end gap-2 h-14">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                            <span className="text-slate-900 font-bold">{tx.status}</span>
+                          <td className="py-4 px-4 text-slate-400 font-medium text-center">{tx.date || (tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('vi-VN') : '')}</td>
+                          <td className="py-4 px-4 text-right">
+                            <div className="flex flex-col items-end gap-1.5">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                                tx.status === 'paid' || tx.status === 'Completed' || tx.status === 'Claimed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : tx.status === 'pending'
+                                ? 'bg-amber-100 text-amber-700 animate-pulse'
+                                : 'bg-red-100 text-red-700'
+                              }`}>
+                                {tx.status}
+                              </span>
+                              {tx.status === 'pending' && (
+                                <button 
+                                  onClick={() => navigate('/payment/checkout/' + (tx._id || tx.id))}
+                                  className="text-[10px] font-black text-indigo-600 underline hover:text-slate-900"
+                                >
+                                  TIẾP TỤC
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1248,103 +1262,260 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
       </div>
 
-      {/* 5. MODAL DETAILED DEPOSIT WITH FLUID INPUT SIMULATION */}
+      {/* Package Detail Modal */}
       <AnimatePresence>
-        {showDepositModal && (
+        {showDetailModal && selectedDetail && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 text-slate-800"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+            >
+              <div className="relative h-48 bg-slate-900 overflow-hidden shrink-0">
+                <img 
+                  src={selectedDetail.image || 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?auto=format&fit=crop&q=80&w=800'} 
+                  className="w-full h-full object-cover opacity-60" 
+                  alt={selectedDetail.name} 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
+                <button 
+                  onClick={() => setShowDetailModal(false)}
+                  className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-xl transition-colors backdrop-blur-md"
+                >
+                  <X size={20} />
+                </button>
+                <div className="absolute bottom-6 left-8">
+                  <span className="px-3 py-1 bg-indigo-600 text-[10px] font-black text-white rounded-full uppercase tracking-widest mb-2 inline-block">
+                    {selectedDetail.category || selectedDetail.type}
+                  </span>
+                  <h3 className="text-3xl font-black text-white uppercase tracking-tight">{selectedDetail.name}</h3>
+                </div>
+              </div>
+
+              <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Mô tả gói nạp</h4>
+                      <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                        {selectedDetail.description || 'Gói nạp này chưa có mô tả chi tiết từ ban quản trị.'}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-500">Giá trị thực tế</span>
+                        <span className="text-sm font-black text-slate-900">{selectedDetail.coinAmount?.toLocaleString()} Xu</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-600">Thưởng kèm theo</span>
+                        <span className="text-sm font-black text-emerald-600">+{selectedDetail.bonusCoin?.toLocaleString()} Xu</span>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">Giá thanh toán</span>
+                        <span className="text-xl font-black text-indigo-600">{formatVND(selectedDetail.price)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Quyền lợi đặc biệt</h4>
+                      <div className="space-y-2">
+                        {(selectedDetail.rights && selectedDetail.rights.length > 0) ? selectedDetail.rights.map((right, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
+                            <ShieldCheck size={14} className="text-emerald-500" />
+                            <span>{right}</span>
+                          </div>
+                        )) : (
+                          <p className="text-xs text-slate-400 font-medium italic">Không có quyền lợi cộng thêm.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lệnh sẽ thực thi (RCON)</h4>
+                      <div className="space-y-1.5">
+                        {selectedDetail.commands?.map((cmd, idx) => (
+                          <div key={idx} className="font-mono text-[10px] p-2 bg-slate-900 text-slate-300 rounded border border-slate-800 break-all">
+                            {cmd}
+                          </div>
+                        )) || <span className="text-xs text-slate-400">Không có lệnh đi kèm.</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0">
+                <button 
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
+                >
+                  Đóng
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelectedPackage(selectedDetail);
+                    setPlayerNameInput('');
+                    setIsPlayerVerified(false);
+                    setShowDetailModal(false);
+                    setShowPurchaseModal(true);
+                  }}
+                  className="flex-[2] py-3.5 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-200 hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+                >
+                  <PlusCircle size={16} />
+                  Thanh toán ngay
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. MODAL PURCHASE PACKAGE & PLAYER VALIDATION */}
+      <AnimatePresence>
+        {showPurchaseModal && selectedPackage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 text-slate-800"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-200/80"
+              className="bg-white rounded-3xl p-0 w-full max-w-lg shadow-2xl border border-white/20 overflow-hidden"
             >
-              
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="text-indigo-600 w-5 h-5" />
-                  <h3 className="font-display font-extrabold text-base text-slate-950 uppercase tracking-wider">
-                    Nạp Xu Vào Tài Khoản
-                  </h3>
+              {/* Header with Image/Icon */}
+              <div className="relative h-40 bg-indigo-600 flex items-center justify-center">
+                <div className="absolute inset-0 opacity-20">
+                  <div className="w-full h-full bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]" />
+                </div>
+                <div className="z-10 text-white flex flex-col items-center">
+                  <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mb-2 shadow-lg">
+                     {selectedPackage.icon === 'workspace_premium' && <Award className="w-10 h-10" />}
+                     {selectedPackage.icon === 'stars' && <Flame className="w-10 h-10" />}
+                     {selectedPackage.icon === 'payments' && <Coins className="w-10 h-10" />}
+                     {/* Fallback */}
+                     {!['workspace_premium', 'stars', 'payments'].includes(selectedPackage.icon) && <Gem className="w-10 h-10" />}
+                  </div>
+                  <h3 className="font-display font-black text-xl uppercase tracking-widest">{selectedPackage.name}</h3>
                 </div>
                 <button 
-                  onClick={() => setShowDepositModal(false)}
-                  className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-slate-600 cursor-pointer border border-slate-100"
+                  onClick={() => setShowPurchaseModal(false)}
+                  className="absolute right-4 top-4 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border border-white/10"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="bg-indigo-50/50 border-l-4 border-indigo-600 text-indigo-950 text-xs p-3.5 rounded-lg mb-5 leading-relaxed font-sans font-medium">
-                💡 Đây là môi trường thử nghiệm Portal. Bạn có thể nạp tiền giả định qua tùy chọn Thẻ tín dụng mô phỏng hoặc nhập Mã kích hoạt quà tặng bất kỳ để thử cộng Coins lập tức.
-              </div>
-
-              <form onSubmit={handlePerformDeposit} className="space-y-5 text-xs text-slate-700">
-                
-                {/* Simulated Option A: Giftcard code */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block uppercase tracking-wide">CÁCH 1: NHẬP MÃ GIFT CARD (Cộng 500 Coins)</label>
-                  <input 
-                    type="text"
-                    placeholder="Ví dụ: EMERALD-GIFT-MOCK"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    value={depositCode}
-                    onChange={e => setDepositCode(e.target.value)}
-                  />
-                </div>
-
-                <div className="text-center text-slate-400 font-bold block my-1">--- HOẶC ---</div>
-
-                {/* Simulated Option B: Select Card USD Top up */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block uppercase tracking-wide">CÁCH 2: THANH TOÁN THẺ ĐỒNG USD</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { val: '20000', label: '20.000 VNĐ' },
-                      { val: '50000', label: '50.000 VNĐ' },
-                      { val: '100000', label: '100.000 VNĐ' },
-                    ].map(opt => (
-                      <button
-                        key={opt.val}
-                        type="button"
-                        onClick={() => {
-                          setDepositAmount(opt.val);
-                          setDepositCode(''); // clear coupon
-                        }}
-                        className={`p-2.5 rounded-lg font-mono font-bold text-[11px] text-center border transition-all cursor-pointer ${
-                          depositAmount === opt.val && !depositCode
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow shadow-indigo-150'
-                          : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+              <div className="p-8 space-y-6">
+                {/* Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Giá thanh toán</span>
+                    <span className="text-lg font-black text-slate-900 font-mono">{formatVND(selectedPackage.price)}</span>
+                  </div>
+                  <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                    <span className="text-[10px] text-indigo-400 font-bold uppercase block mb-1">Xu nhận được</span>
+                    <div className="flex items-center gap-1.5">
+                      <Coins className="w-4 h-4 text-indigo-600" />
+                      <span className="text-lg font-black text-indigo-600 font-mono">
+                        {selectedPackage.badge ? selectedPackage.badge.split(' ')[0] : 'Tùy gói'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowDepositModal(false)}
-                    className="flex-1 py-3 rounded-lg bg-slate-150 hover:bg-slate-200 text-slate-700 font-bold uppercase transition-colors cursor-pointer text-center text-xs"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 rounded-lg bg-indigo-600 text-white font-display font-bold uppercase tracking-wider hover:bg-slate-900 transition-all cursor-pointer text-center text-xs shadow shadow-indigo-150"
-                  >
-                    Xác nhận Nạp Xu
-                  </button>
+                {selectedPackage.description && (
+                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                     <span className="text-[10px] text-slate-400 font-bold uppercase block mb-2">Mô tả & Hướng dẫn</span>
+                     <p className="text-xs text-slate-600 leading-relaxed italic">
+                        {selectedPackage.description}
+                     </p>
+                   </div>
+                )}
+
+                {/* Player Input */}
+                <div className="space-y-3">
+                   <div className="flex justify-between items-center">
+                     <label className="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-2">
+                       <Users className="w-4 h-4 text-indigo-600" />
+                       Tên nhân vật trong game *
+                     </label>
+                     {isPlayerVerified && (
+                       <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                         <ShieldCheck className="w-3 h-3" />
+                         Đã xác thực
+                       </span>
+                     )}
+                   </div>
+                   
+                   <div className="flex gap-2">
+                     <div className="relative flex-1">
+                        <input 
+                          type="text"
+                          placeholder="Ví dụ: Notch, kingxu2004..."
+                          className={`w-full bg-slate-50 border rounded-xl py-3 px-4 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
+                            isPlayerVerified ? 'border-emerald-500 focus:ring-emerald-500' : 'border-slate-200 focus:ring-indigo-500'
+                          }`}
+                          value={playerNameInput}
+                          onChange={e => {
+                            setPlayerNameInput(e.target.value);
+                            setIsPlayerVerified(false);
+                          }}
+                        />
+                     </div>
+                     <button
+                       type="button"
+                       onClick={handleCheckPlayer}
+                       disabled={isCheckingPlayer || !playerNameInput.trim()}
+                       className={`px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center min-w-[100px] ${
+                         isCheckingPlayer ? 'bg-slate-100 text-slate-400' : 
+                         isPlayerVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-white hover:bg-indigo-600'
+                       }`}
+                     >
+                       {isCheckingPlayer ? (
+                         <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                       ) : isPlayerVerified ? 'Đã Check' : 'Kiểm tra'}
+                     </button>
+                   </div>
+                   <p className="text-[10px] text-slate-400 italic">
+                     * Bạn phải nhập đúng tên đang sử dụng trên server để hệ thống cấp phát vật phẩm.
+                   </p>
                 </div>
 
-              </form>
-
+                {/* Actions */}
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPurchaseModal(false)}
+                    className="flex-1 py-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase transition-colors cursor-pointer text-xs"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmPurchase}
+                    disabled={!isPlayerVerified}
+                    className={`flex-1 py-4 rounded-2xl font-display font-bold uppercase tracking-widest transition-all cursor-pointer text-xs shadow-lg ${
+                      isPlayerVerified 
+                      ? 'bg-indigo-600 text-white hover:bg-slate-900 shadow-indigo-200' 
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                    }`}
+                  >
+                    Thanh toán ngay
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}

@@ -12,7 +12,10 @@ export interface Transaction {
   coinsChange: number;
   date?: string;
   createdAt?: string;
-  status: 'Completed' | 'Claimed' | 'Pending';
+  status: 'Completed' | 'Claimed' | 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired';
+  playerName?: string;
+  transactionId?: string;
+  orderCode?: number;
 }
 
 export interface UserProfile {
@@ -38,6 +41,12 @@ export interface StoreItem {
   badge?: string;
   icon: string;
   type: 'Rank' | 'BattlePass' | 'Coins' | 'Cosmetic';
+  bonusCoin?: number;
+  coinAmount?: number;
+  commands?: string[];
+  rights?: string[];
+  category?: string;
+  image?: string;
 }
 
 // ── Admin Types ──────────────────────────────────────────────
@@ -52,6 +61,7 @@ export interface CoinPackage {
   bonusCoin: number;
   isVisible: boolean;
   category: 'Coin' | 'VIP' | 'Pass';
+  commands?: string[];
   createdAt?: string;
 }
 

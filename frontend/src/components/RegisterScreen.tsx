@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video, Phone } from 'lucide-react';
+import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video, Phone, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import api from '../lib/api';
@@ -20,6 +20,8 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -188,17 +190,24 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                   <input 
                     id="reg-password"
                     required
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-10 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-12 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
                   />
-                  {password.length > 5 && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-600">
-                      <CheckCircle className="w-4 h-4 fill-white" />
-                    </span>
-                  )}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-slate-400 hover:text-indigo-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                    {password.length > 5 && hasMinLength && hasUppercase && (
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    )}
+                  </div>
                 </div>
 
                 {/* Password requirement indicators */}
@@ -231,21 +240,28 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                   <input 
                     id="reg-confirm"
                     required
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-12 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
                   />
-                  {password && confirmPassword && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {password === confirmPassword ? (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="text-slate-400 hover:text-indigo-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                    {password && confirmPassword && (
+                      password === confirmPassword ? (
                         <CheckCircle className="w-4 h-4 text-emerald-500" />
                       ) : (
                         <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-bold">!</div>
-                      )}
-                    </span>
-                  )}
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
 

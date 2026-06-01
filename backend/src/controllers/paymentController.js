@@ -5,6 +5,8 @@ const Transaction = require('../models/Transaction');
 const Package = require('../models/Package');
 const User = require('../models/User');
 const PaymentConfig = require('../models/PaymentConfig');
+const PackageExecutionLog = require('../models/PackageExecutionLog');
+const rconService = require('../services/rconService');
 
 // Utility to get PayOS instance
 const getPayOSInstance = async () => {
@@ -24,7 +26,12 @@ const getPayOSInstance = async () => {
 // @access  Private
 exports.createPayment = async (req, res) => {
   try {
-    const { packageId } = req.body;
+    const { packageId, playerName } = req.body;
+    
+    if (!playerName) {
+      return res.status(400).json({ message: 'Vui lòng nhập tên người chơi Minecraft' });
+    }
+
     const pkg = await Package.findById(packageId);
     if (!pkg) {
       return res.status(404).json({ message: 'Không tìm thấy gói nạp' });
@@ -46,7 +53,7 @@ exports.createPayment = async (req, res) => {
     const body = {
       orderCode: orderCode,
       amount: pkg.price,
-      description: `Nap ${pkg.coinAmount} Xu - ${req.user.username}`,
+      description: `MS${orderCode}`, // Use a simple, short format like MS + orderCode for best compatibility
       items: [
         {
           name: pkg.name,
@@ -82,6 +89,11 @@ exports.createPayment = async (req, res) => {
       paymentUrl: paymentLinkRes.checkoutUrl,
       qrCode: paymentLinkRes.qrCode || '',
       status: 'pending',
+      playerName: playerName,
+      accountNumber: paymentLinkRes.accountNumber,
+      accountName: paymentLinkRes.accountName,
+      description: paymentLinkRes.description || body.description, // Use the description returned by PayOS or fallback to body.description
+      bankName: paymentLinkRes.bin || 'VietQR',
     });
 
 
@@ -140,18 +152,7 @@ exports.handleWebhook = async (req, res) => {
     }
 
     if (code === '00') {
-      transaction.status = 'paid';
-      transaction.transactionId = webhookData.reference;
-      await transaction.save();
-      console.log('[WEBHOOK] TRANSACTION AFTER UPDATE:', { id: transaction._id, status: transaction.status });
-
-      const user = await User.findById(transaction.user._id);
-      if (user) {
-        user.balance += transaction.coinsChange;
-        user.totalDeposited += Number(transaction.amount) || 0;
-        await user.save();
-        console.log(`[WEBHOOK] Payment Success: Order ${webhookData.orderCode} for User ${user.username}, +${transaction.coinsChange} coins`);
-      }
+      await processSuccessfulPayment(transaction);
     } else {
       transaction.status = 'failed';
       await transaction.save();
@@ -174,6 +175,7 @@ const processSuccessfulPayment = async (transaction) => {
   transaction.status = 'paid';
   await transaction.save();
 
+  // 1. Update User Balance
   const user = await User.findById(transaction.user._id || transaction.user);
   if (user) {
     user.balance += transaction.coinsChange;
@@ -181,6 +183,40 @@ const processSuccessfulPayment = async (transaction) => {
     await user.save();
     console.log(`[PAYMENT CONFIRMED] Order ${transaction.orderCode} → User ${user.username} +${transaction.coinsChange} coins`);
   }
+
+  // 2. Execute Minecraft Package Commands if applicable
+  if (transaction.package && transaction.playerName) {
+    const pkg = await Package.findById(transaction.package);
+    if (pkg && pkg.commands && pkg.commands.length > 0) {
+      console.log(`[RCON] Executing commands for package ${pkg.name}, player ${transaction.playerName}`);
+      for (const cmdTemplate of pkg.commands) {
+        const command = cmdTemplate.replace(/{player}/g, transaction.playerName);
+        try {
+          const response = await rconService.sendCommand(command);
+          await PackageExecutionLog.create({
+            paymentId: transaction._id,
+            packageId: pkg._id,
+            playerName: transaction.playerName,
+            command: command,
+            success: true,
+            response: response || 'Success'
+          });
+          console.log(`[RCON] Executed: ${command}`);
+        } catch (error) {
+          console.error(`[RCON] Failed: ${command}`, error.message);
+          await PackageExecutionLog.create({
+            paymentId: transaction._id,
+            packageId: pkg._id,
+            playerName: transaction.playerName,
+            command: command,
+            success: false,
+            response: error.message
+          });
+        }
+      }
+    }
+  }
+
   return true;
 };
 
@@ -196,8 +232,15 @@ exports.getPaymentStatus = async (req, res) => {
 
     // If already paid/completed in our DB, return immediately
     if (transaction.status === 'paid' || transaction.status === 'Completed') {
-      console.log('[STATUS API] Already paid in DB. OrderCode:', transaction.orderCode);
       return res.json({ status: transaction.status });
+    }
+
+    // If pending and too old (30 mins), auto-cancel
+    const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (transaction.status === 'pending' && transaction.createdAt < thirtyMinsAgo) {
+      transaction.status = 'cancelled';
+      await transaction.save();
+      return res.json({ status: 'cancelled' });
     }
 
     // ACTIVE POLLING: If still pending, query PayOS API directly
@@ -212,13 +255,14 @@ exports.getPaymentStatus = async (req, res) => {
           console.log('[STATUS API] PayOS confirmed PAID! Updating DB...');
           transaction.transactionId = payosData.reference || payosData.id || '';
           await processSuccessfulPayment(transaction);
-          return res.json({ status: 'paid' });
+          return res.json({ status: 'paid', transactionId: transaction.transactionId });
         }
 
         if (payosData && (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED')) {
-          transaction.status = 'cancelled';
+          const newStatus = payosData.status.toLowerCase() === 'expired' ? 'expired' : 'cancelled';
+          transaction.status = newStatus;
           await transaction.save();
-          return res.json({ status: 'cancelled' });
+          return res.json({ status: newStatus });
         }
       } catch (payosErr) {
         // If PayOS query fails, fall through to return DB status
@@ -227,7 +271,62 @@ exports.getPaymentStatus = async (req, res) => {
     }
 
     console.log('[STATUS API] Returning DB status:', transaction.status, 'OrderCode:', transaction.orderCode);
-    res.json({ status: transaction.status });
+    res.json({ 
+      status: transaction.status,
+      transactionId: transaction.transactionId || '',
+      orderCode: transaction.orderCode,
+      payosOrderId: transaction.payosOrderId || '',
+      paymentUrl: transaction.paymentUrl || ''
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Resume payment for existing pending transaction
+// @route   GET /api/payment/resume/:id
+// @access  Private
+exports.resumePayment = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
+    }
+
+    if (transaction.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Không có quyền truy cập' });
+    }
+
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({ message: `Giao dịch đã ở trạng thái ${transaction.status}` });
+    }
+
+    // Optional: Refresh from PayOS first to make sure it's actually still pending
+    try {
+      const payos = await getPayOSInstance();
+      const payosData = await payos.paymentRequests.get(transaction.payosOrderId);
+      
+      if (payosData.status === 'PAID') {
+        await processSuccessfulPayment(transaction);
+        return res.status(400).json({ message: 'Giao dịch đã được thanh toán' });
+      }
+      
+      if (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED') {
+        transaction.status = payosData.status.toLowerCase();
+        await transaction.save();
+        return res.status(400).json({ message: 'Giao dịch đã hết hạn hoặc bị hủy' });
+      }
+    } catch (err) {
+      console.warn('PayOS check failed during resume:', err.message);
+    }
+
+    res.json({
+      orderCode: transaction.orderCode,
+      checkoutUrl: transaction.paymentUrl,
+      qrCode: transaction.qrCode,
+      transactionId: transaction._id,
+      status: transaction.status
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -241,6 +340,17 @@ exports.getPaymentHistory = async (req, res) => {
     const { page = 1, limit = 10, status } = req.query;
     const query = { user: req.user._id, type: 'Deposit' };
     if (status) query.status = status;
+
+    // Auto-cancel transactions older than 30 minutes that are still pending
+    const expiryTime = new Date(Date.now() - 30 * 60 * 1000);
+    await Transaction.updateMany(
+      { 
+        user: req.user._id, 
+        status: 'pending', 
+        createdAt: { $lt: expiryTime } 
+      },
+      { status: 'cancelled' }
+    );
 
     const skip = (page - 1) * limit;
     const transactions = await Transaction.find(query)

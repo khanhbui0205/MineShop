@@ -42,6 +42,14 @@ const packageSchema = new mongoose.Schema(
       enum: ['Coin', 'VIP', 'Pass'],
       default: 'Coin',
     },
+    commands: {
+      type: [String],
+      default: [],
+    },
+    rights: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
