@@ -1068,19 +1068,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       
                       <div className="space-y-1.5">
                         <label className="font-bold text-slate-700 uppercase tracking-wide">Cấp bậc server (Visual Rank)</label>
-                        <select 
+                        <input 
+                          disabled 
+                          type="text" 
                           value={userProfile.rank} 
-                          onChange={e => {
-                            const val = e.target.value as any;
-                            setUserProfile(prev => ({ ...prev, rank: val }));
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="Guest">Guest</option>
-                          <option value="VIP">VIP</option>
-                          <option value="MVP">MVP</option>
-                          <option value="MVP+">MVP+</option>
-                        </select>
+                          className="w-full bg-slate-50 border border-slate-100 rounded-lg py-3 px-3 text-slate-400 cursor-not-allowed font-medium"
+                        />
+                        <p className="text-[10px] text-slate-400 font-medium italic">* Cấp bậc được cập nhật tự động khi bạn nâng cấp gói VIP tại Cửa hàng.</p>
                       </div>
 
                       <div className="space-y-1.5">
