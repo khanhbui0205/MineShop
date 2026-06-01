@@ -11,6 +11,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const packageRoutes = require('./routes/packageRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const serverControlRoutes = require('./routes/admin/serverControlRoutes');
+const minecraftRoutes = require('./routes/minecraftRoutes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin/server-control', serverControlRoutes);
+app.use('/api/minecraft', minecraftRoutes);
 
 // Health check
 app.get('/', (req, res) => {

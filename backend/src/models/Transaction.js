@@ -45,6 +45,14 @@ const transactionSchema = new mongoose.Schema(
       enum: ['pending', 'paid', 'failed', 'cancelled', 'expired', 'Completed', 'Claimed'],
       default: 'pending',
     },
+    playerName: {
+      type: String,
+      trim: true,
+    },
+    accountNumber: String,
+    accountName: String,
+    description: String,
+    bankName: String,
   },
   {
     timestamps: true,

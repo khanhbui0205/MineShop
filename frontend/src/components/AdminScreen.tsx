@@ -82,6 +82,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
         bonusCoin: p.bonusCoin,
         isVisible: p.isVisible,
         category: p.category,
+        commands: p.commands || [],
         createdAt: p.createdAt,
       }));
       setPackages(pkgs);
@@ -108,6 +109,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
         bonusCoin: pkg.bonusCoin,
         isVisible: pkg.isVisible,
         category: pkg.category,
+        commands: pkg.commands || [],
       });
       const newPkg: CoinPackage = {
         id: res.data._id,
@@ -133,6 +135,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
         bonusCoin: pkg.bonusCoin,
         isVisible: pkg.isVisible,
         category: pkg.category,
+        commands: pkg.commands || [],
       });
       setPackages(prev => prev.map(p => (p.id === pkg.id || p._id === pkg._id) ? { ...p, ...res.data, id: res.data._id } : p));
       addAuditLog(`Cập nhật gói: ${pkg.name}`, `Giá mới: ${formatVND(pkg.price)}`, 'secondary');

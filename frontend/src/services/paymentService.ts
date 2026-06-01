@@ -14,19 +14,31 @@ export interface PaymentTransaction {
   coinsChange: number;
   status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired';
   item: string;
+  transactionId?: string;
+  payosOrderId?: string;
+  playerName?: string;
   createdAt: string;
   paymentUrl?: string;
   qrCode?: string;
+  accountNumber?: string;
+  accountName?: string;
+  description?: string;
+  bankName?: string;
 }
 
 const paymentService = {
-  createPayment: async (packageId: string): Promise<CreatePaymentResponse> => {
-    const response = await http.post('/payment/create', { packageId });
+  createPayment: async (packageId: string, playerName: string): Promise<CreatePaymentResponse> => {
+    const response = await http.post('/payment/create', { packageId, playerName });
     return response.data;
   },
 
-  getPaymentStatus: async (orderCode: number): Promise<{ status: string }> => {
+  getPaymentStatus: async (orderCode: number): Promise<{ status: string, transactionId?: string, paymentUrl?: string }> => {
     const response = await http.get(`/payment/status/${orderCode}`);
+    return response.data;
+  },
+
+  getResumePayment: async (id: string): Promise<PaymentTransaction> => {
+    const response = await http.get(`/payment/resume/${id}`);
     return response.data;
   },
 

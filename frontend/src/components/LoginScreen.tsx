@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { LogIn, Lock, User, Swords, HelpCircle, MessageSquare, Share2, AtSign } from 'lucide-react';
+import { LogIn, Lock, User, Swords, MessageSquare, Share2, AtSign, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import api from '../lib/api';
@@ -17,6 +17,7 @@ interface LoginScreenProps {
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: LoginScreenProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -129,13 +130,20 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                 </span>
                 <input 
                   id="login-password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   placeholder="Mật khẩu"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-10 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
 
               {/* Keep Remember me & Forgot Password */}
@@ -161,9 +169,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
               {/* Submit Button */}
               <button 
                 type="submit"
-                className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                disabled={loading}
+                className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Đăng nhập
+                {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 <LogIn className="w-4 h-4" />
               </button>
             </form>

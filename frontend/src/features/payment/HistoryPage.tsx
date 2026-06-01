@@ -140,6 +140,7 @@ export default function HistoryPage() {
               <thead>
                 <tr className="bg-slate-50/80 text-[10px] font-mono text-slate-400 font-bold uppercase tracking-[0.2em] border-b border-slate-200">
                   <th className="py-5 px-8">Mã đơn</th>
+                  <th className="py-5 px-8">Mã giao dịch</th>
                   <th className="py-5 px-8">Nội dung</th>
                   <th className="py-5 px-8">Số tiền</th>
                   <th className="py-5 px-8">Thời gian</th>
@@ -156,11 +157,19 @@ export default function HistoryPage() {
                     transition={{ delay: idx * 0.05 }}
                     className="hover:bg-slate-50/50 transition-colors group text-slate-600"
                   >
-                    <td className="py-6 px-8 font-mono font-bold text-slate-400 group-hover:text-indigo-600">
+                    <td className="py-6 px-8 font-mono font-bold text-slate-400">
                       #{tx.orderCode}
+                    </td>
+                    <td className="py-6 px-8 font-mono text-[10px] text-slate-400">
+                      {tx.transactionId || '---'}
                     </td>
                     <td className="py-6 px-8">
                       <p className="font-extrabold text-slate-900">{tx.item}</p>
+                      {tx.playerName && (
+                        <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-tight mt-0.5">
+                          Player: {tx.playerName}
+                        </p>
+                      )}
                       <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">VietQR / PayOS</p>
                     </td>
                     <td className="py-6 px-8">
@@ -181,7 +190,7 @@ export default function HistoryPage() {
                           onClick={() => navigate('/payment/checkout/' + tx._id)}
                           className="px-4 py-2 bg-indigo-50 hover:bg-slate-900 text-indigo-600 hover:text-white border border-indigo-100 font-mono text-[10px] font-bold tracking-widest rounded-xl transition-all shadow-sm"
                         >
-                          THANH TOÁN
+                          TIẾP TỤC
                         </button>
                       )}
                     </td>

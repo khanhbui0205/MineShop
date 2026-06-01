@@ -219,15 +219,42 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Order Code */}
+                  {/* Recipient Account Number */}
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Mã đơn hàng</span>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Số tài khoản</span>
                     <div 
-                      onClick={() => triggerCopy(transaction.orderCode.toString(), 'Mã đơn')}
+                      onClick={() => triggerCopy(transaction.accountNumber || '', 'Số tài khoản')}
                       className="p-3 bg-white rounded-xl border border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-sm"
                     >
-                      <span className="font-mono text-sm font-bold text-indigo-600">#{transaction.orderCode}</span>
-                      {copiedField === 'Mã đơn' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-slate-400 group-hover:text-indigo-500" />}
+                      <div className="flex flex-col">
+                        <span className="font-mono text-sm font-bold text-slate-800">{transaction.accountNumber || 'N/A'}</span>
+                        <span className="text-[10px] text-slate-400 font-bold">{transaction.bankName || 'Ngân hàng'}</span>
+                      </div>
+                      {copiedField === 'Số tài khoản' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-slate-400 group-hover:text-indigo-500" />}
+                    </div>
+                  </div>
+
+                  {/* Recipient Name */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Người nhận</span>
+                    <div 
+                      onClick={() => triggerCopy(transaction.accountName || '', 'Tên người nhận')}
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-sm"
+                    >
+                      <span className="text-sm font-bold text-slate-700 uppercase">{transaction.accountName || 'N/A'}</span>
+                      {copiedField === 'Tên người nhận' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-slate-400 group-hover:text-indigo-500" />}
+                    </div>
+                  </div>
+
+                  {/* Transfer Content */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Nội dung chuyển khoản</span>
+                    <div 
+                      onClick={() => triggerCopy(transaction.description || transaction.orderCode.toString(), 'Nội dung')}
+                      className="p-3 bg-amber-50/50 rounded-xl border border-amber-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-sm"
+                    >
+                      <span className="font-mono text-sm font-bold text-amber-700">{transaction.description || transaction.orderCode}</span>
+                      {copiedField === 'Nội dung' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-amber-400 group-hover:text-indigo-500" />}
                     </div>
                   </div>
 
@@ -247,7 +274,7 @@ export default function CheckoutPage() {
 
                   <div className="bg-rose-50 border border-rose-100 rounded-xl p-3">
                     <p className="text-[10px] text-rose-500 leading-relaxed font-medium">
-                      * Lưu ý: Vui lòng không thay đổi số tiền hoặc nội dung chuyển khoản để hệ thống tự động xử lý.
+                      * Lưu ý: Vui lòng chuyển đúng số tiền và nội dung chuyển khoản như trên để hệ thống tự động xử lý nhanh nhất.
                     </p>
                   </div>
                 </div>

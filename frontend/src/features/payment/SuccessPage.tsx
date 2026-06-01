@@ -54,6 +54,12 @@ export default function SuccessPage() {
             <span className="text-slate-400 font-bold uppercase tracking-wider">Mã đơn hàng</span>
             <span className="text-slate-900 font-mono font-black">#{transaction.orderCode}</span>
           </div>
+          {transaction.playerName && (
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Nhân vật Minecraft</span>
+              <span className="text-indigo-600 font-black">{transaction.playerName}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Mã giao dịch</span>
             <span className="text-slate-900 font-mono font-black text-[10px]">{transaction._id}</span>
@@ -76,12 +82,19 @@ export default function SuccessPage() {
             <span className="text-slate-400 font-bold uppercase tracking-wider">Thời gian</span>
             <span className="text-slate-700 font-semibold">{new Date(transaction.createdAt).toLocaleString('vi-VN')}</span>
           </div>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-400 font-bold uppercase tracking-wider">Trạng thái cấp phát</span>
+            <span className="text-emerald-600 font-black flex items-center gap-1">
+              <CheckCircle2 size={12} />
+              Hoàn tất
+            </span>
+          </div>
         </div>
 
 
         <div className="flex flex-col gap-3">
           <button 
-            onClick={() => navigate('/')}
+            onClick={() => window.location.href = '/'}
             className="flex items-center justify-center gap-3 bg-indigo-600 hover:bg-slate-900 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-900/20 text-xs uppercase tracking-widest"
           >
             <Home size={18} />

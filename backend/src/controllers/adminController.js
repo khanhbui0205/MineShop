@@ -237,7 +237,7 @@ exports.getPublicPackages = async (req, res) => {
 // @access  Private/Admin
 exports.createPackage = async (req, res) => {
   try {
-    const { name, description, price, coinAmount, bonusCoin, isVisible, category } = req.body;
+    const { name, description, price, coinAmount, bonusCoin, isVisible, category, commands } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Vui lòng nhập tên gói' });
@@ -259,6 +259,7 @@ exports.createPackage = async (req, res) => {
       category: category || 'Coin',
       image: req.body.image || '',
       sortOrder: req.body.sortOrder || 0,
+      commands: commands || [],
     });
 
     res.status(201).json(pkg);
@@ -275,7 +276,7 @@ exports.updatePackage = async (req, res) => {
     const pkg = await Package.findById(req.params.id);
     if (!pkg) return res.status(404).json({ message: 'Không tìm thấy gói nạp' });
 
-    const { name, description, price, coinAmount, bonusCoin, isVisible, category } = req.body;
+    const { name, description, price, coinAmount, bonusCoin, isVisible, category, commands } = req.body;
 
     if (name !== undefined) pkg.name = name.trim();
     if (description !== undefined) pkg.description = description;
@@ -286,6 +287,7 @@ exports.updatePackage = async (req, res) => {
     if (category !== undefined) pkg.category = category;
     if (req.body.image !== undefined) pkg.image = req.body.image;
     if (req.body.sortOrder !== undefined) pkg.sortOrder = req.body.sortOrder;
+    if (commands !== undefined) pkg.commands = commands;
 
     await pkg.save();
     res.json(pkg);
