@@ -102,6 +102,17 @@ export default function App() {
               )
             } 
           />
+          
+          <Route 
+            path="/admin/server-control" 
+            element={
+              currentUser?.role === 'admin' ? (
+                <AdminScreen user={currentUser} onLogout={handleLogout} initialTab="Server Control" />
+              ) : (
+                <Navigate to="/login" />
+              )
+            } 
+          />
 
           {/* Payment Routes with Shared Layout */}
           <Route 

@@ -3,34 +3,35 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   Users,
-  Package,
   LogOut,
   ShieldCheck,
   Swords,
   Settings,
   Bell,
-  X,
   AlertCircle,
   CreditCard,
+  Terminal,
 } from 'lucide-react';
 import type { AdminTab, CoinPackage, Player, AuditLog, AdminStats } from '../types';
 import DashboardAdmin from './DashboardAdmin';
 import UsersAdmin from './UsersAdmin';
 import PaymentAdmin from './PaymentAdmin';
+import ServerControlAdmin from './ServerControlAdmin';
 import api from '../lib/api';
 
 
 interface AdminScreenProps {
   user: any;
   onLogout: () => void;
+  initialTab?: AdminTab;
 }
 
 // Format VNĐ
 export const formatVND = (amount: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
-export default function AdminScreen({ user, onLogout }: AdminScreenProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('Tổng quan');
+export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan' }: AdminScreenProps) {
+  const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     bannedUsers: 0,
@@ -235,6 +236,7 @@ export default function AdminScreen({ user, onLogout }: AdminScreenProps) {
     { label: 'Tổng quan', icon: <LayoutDashboard size={18} /> },
     { label: 'Người dùng', icon: <Users size={18} /> },
     { label: 'Thanh toán', icon: <CreditCard size={18} /> },
+    { label: 'Server Control', icon: <Terminal size={18} /> },
     { label: 'Cài đặt', icon: <Settings size={18} /> },
   ];
 
@@ -294,7 +296,15 @@ export default function AdminScreen({ user, onLogout }: AdminScreenProps) {
           {navItems.map(({ label, icon }) => (
             <button
               key={label}
-              onClick={() => setActiveTab(label)}
+              onClick={() => {
+                setActiveTab(label);
+                // If the user wants specific routes, we should navigate too
+                if (label === 'Server Control') {
+                  window.history.pushState({}, '', '/admin/server-control');
+                } else if (label === 'Tổng quan') {
+                  window.history.pushState({}, '', '/admin');
+                }
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${
                 activeTab === label
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/30'
@@ -443,6 +453,18 @@ export default function AdminScreen({ user, onLogout }: AdminScreenProps) {
                   transition={{ duration: 0.25 }}
                 >
                   <PaymentAdmin />
+                </motion.div>
+              )}
+
+              {activeTab === 'Server Control' && (
+                <motion.div
+                  key="server-control"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <ServerControlAdmin />
                 </motion.div>
               )}
 

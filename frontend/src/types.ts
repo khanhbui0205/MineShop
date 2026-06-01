@@ -102,7 +102,19 @@ export interface AdminStats {
   totalPackages: number;
 }
 
+export interface ServerCommand {
+  _id: string;
+  adminId: {
+    _id: string;
+    username: string;
+  } | string;
+  command: string;
+  response: string;
+  success: boolean;
+  createdAt: string;
+}
+
 export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Lịch sử' | 'Cài đặt';
-export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Thanh toán' | 'Cài đặt';
+export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Thanh toán' | 'Server Control' | 'Cài đặt';
 export type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'ADMIN';
 
