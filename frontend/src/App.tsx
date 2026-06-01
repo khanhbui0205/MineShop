@@ -11,7 +11,7 @@ import HistoryPage from './features/payment/HistoryPage';
 import MainLayout from './components/MainLayout';
 import api from './lib/api';
 
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -38,6 +38,19 @@ export default function App() {
     };
 
     checkSession();
+
+    // Health check logic
+    const checkHealth = async () => {
+      try {
+        const res = await api.get('/health');
+        if (res.data.success) {
+          toast.success("Đã kết nối Backend", { id: 'health-check' });
+        }
+      } catch (error) {
+        toast.error("Không thể kết nối Backend", { id: 'health-check' });
+      }
+    };
+    checkHealth();
   }, []);
 
   const handleLoginSuccess = (user: any) => {
