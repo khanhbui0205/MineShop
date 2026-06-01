@@ -29,14 +29,30 @@ if (process.env.NODE_ENV === 'development') {
 // Set security headers
 app.use(helmet());
 
-// Enable CORS
+// Enable CORS with dynamic origin support
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "https://mineshop.khanhbui0205.workers.dev",
+  "https://cloudflare-workers-autoconfig-mineshop.khanhbui0205.workers.dev" // Origin thực tế mới
+].filter(Boolean);
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL,
-    "https://mineshop.khanhbui0205.workers.dev"
-  ].filter(Boolean),
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Xử lý thêm preflight OPTIONS cho chắc chắn
+app.options('*', cors());
 
 // Mount routers
 app.use('/api/auth', authRoutes);
