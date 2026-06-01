@@ -31,7 +31,10 @@ app.use(helmet());
 
 // Enable CORS
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: [
+    process.env.FRONTEND_URL,
+    "https://mineshop.khanhbui0205.workers.dev"
+  ].filter(Boolean),
   credentials: true,
 }));
 
@@ -45,9 +48,17 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/admin/server-control', serverControlRoutes);
 app.use('/api/minecraft', minecraftRoutes);
 
-// Health check
+// Health check (old root)
 app.get('/', (req, res) => {
   res.json({ message: 'MineShop API đang hoạt động', version: '2.0.0' });
+});
+
+// Health check API
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: "ok"
+  });
 });
 
 // Error handler middleware
