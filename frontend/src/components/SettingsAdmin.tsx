@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Calendar, 
@@ -15,7 +15,7 @@ import {
   UserCheck,
   X
 } from 'lucide-react';
-import { ActiveSession } from '../types';
+import type { ActiveSession } from '../types';
 
 interface SettingsAdminProps {
   initialSessions: ActiveSession[];
