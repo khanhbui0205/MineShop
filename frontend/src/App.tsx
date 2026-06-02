@@ -43,7 +43,7 @@ export default function App() {
     // Health check logic
     const checkHealth = async () => {
       try {
-        const res = await api.get('/api/health');
+        const res = await api.get('/health');
         if (res.data.success) {
           toast.success("Đã kết nối tới máy chủ", { id: 'health-check' });
         }

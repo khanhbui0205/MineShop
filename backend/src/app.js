@@ -32,6 +32,7 @@ app.use(helmet());
 // Enable CORS with dynamic origin support
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  "http://localhost:5173",
   "https://mineshop.khanhbui0205.workers.dev",
   "https://cloudflare-workers-autoconfig-mineshop.khanhbui0205.workers.dev" // Origin thực tế mới
 ].filter(Boolean);
@@ -51,8 +52,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Xử lý thêm preflight OPTIONS bằng Regex literal (Tương thích tốt nhất với Express 5)
-app.options(/.* / , cors());
+// Xử lý thêm preflight OPTIONS (Tương thích tốt nhất với Express 5)
+app.options('*', cors());
+
+// Middleware normalize multiple slashes (e.g. //api -> /api)
+app.use((req, res, next) => {
+  req.url = req.url.replace(/\/+/g, '/');
+  next();
+});
 
 // Mount routers
 app.use('/api/auth', authRoutes);
