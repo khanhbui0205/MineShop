@@ -7,6 +7,7 @@ const User = require('../models/User');
 const PaymentConfig = require('../models/PaymentConfig');
 const PackageExecutionLog = require('../models/PackageExecutionLog');
 const rconService = require('../services/rconService');
+const { processSuccessfulPayment } = require('../services/paymentProcessingService');
 
 // Utility to get PayOS instance
 const getPayOSInstance = async () => {
@@ -122,121 +123,92 @@ exports.createPayment = async (req, res) => {
 };
 
 
-// @desc    Handle PayOS Webhook
-// @route   POST /api/payment/webhook
-// @access  Public
-// @desc    Handle PayOS Webhook
-// @route   POST /api/payos/webhook
-// @access  Public
 exports.handleWebhook = async (req, res) => {
   try {
-    console.log('[WEBHOOK RECEIVED]', JSON.stringify(req.body));
+    const { data, signature, event } = req.body;
+    console.log(`[PAYOS WEBHOOK] Received event: ${event} for OrderCode: ${data?.orderCode}`);
+    console.log(`[PAYOS WEBHOOK BODY]`, JSON.stringify(req.body));
+
     const payos = await getPayOSInstance();
     
     // Verify Webhook Data using SDK
-    const webhookData = payos.verifyPaymentWebhookData(req.body.data);
-    console.log('[WEBHOOK VERIFIED] OrderCode:', webhookData?.orderCode, 'Status:', req.body.data?.status);
-
-    if (!webhookData) {
-      return res.status(400).json({ message: 'Webhook data verification failed' });
+    try {
+      payos.verifyPaymentWebhookData(data); // This throws if signature is invalid
+    } catch (verifyErr) {
+      console.error('[PAYOS WEBHOOK] Verification failed:', verifyErr.message);
+      return res.status(400).json({ message: 'Webhook signature verification failed' });
     }
 
-    const transaction = await Transaction.findOne({ orderCode: webhookData.orderCode }).populate('user');
+    const transaction = await Transaction.findOne({ orderCode: data.orderCode }).populate('user');
     if (!transaction) {
-      console.log('[WEBHOOK] Transaction not found for orderCode:', webhookData.orderCode);
-      return res.json({ success: true }); // Return Success to PayOS even if not found locally to stop retries if it's an old/unknown order
+      console.warn('[PAYOS WEBHOOK] Transaction not found for OrderCode:', data.orderCode);
+      return res.json({ success: true }); // Stop PayOS retries
     }
 
-    // Anti Duplicate - If already completed, skip
-    if (transaction.status === 'completed' || transaction.status === 'paid') {
-      console.log('[WEBHOOK] Already processed, skipping');
+    console.log(`[PAYOS WEBHOOK] Processing Order ${transaction.orderCode}. Current Status: ${transaction.status}, New Status: ${data.status}`);
+
+    // Anti-duplicate & Idempotency
+    if (transaction.status === 'completed' || transaction.status === 'paid' || transaction.rewardDelivered) {
+      console.log('[PAYOS WEBHOOK] Transaction already processed/fulfilled. Skipping.');
       return res.json({ success: true });
     }
 
-    const payosStatus = req.body.data?.status;
-
-    if (payosStatus === 'PAID') {
-      transaction.transactionId = webhookData.reference || transaction.transactionId;
+    if (data.status === 'PAID') {
+      transaction.transactionId = data.reference || transaction.transactionId;
       await processSuccessfulPayment(transaction);
-    } else if (payosStatus === 'CANCELLED' || payosStatus === 'EXPIRED') {
+      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} marked as COMPLETED`);
+    } else if (data.status === 'CANCELLED' || data.status === 'EXPIRED') {
       transaction.status = 'cancelled';
       await transaction.save();
-      console.log(`[WEBHOOK] Order ${transaction.orderCode} was ${payosStatus}`);
-    } else {
-      console.log(`[WEBHOOK] Order ${transaction.orderCode} status: ${payosStatus}`);
+      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} marked as ${data.status}`);
     }
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[WEBHOOK ERROR]', error.message);
-    // Don't return error to PayOS or it will keep retrying even if it's just a local logic issue
+    console.error('[PAYOS WEBHOOK ERROR]', error.message);
     res.json({ success: false, message: error.message });
   }
 };
 
-// Helper: Process a paid transaction
-const processSuccessfulPayment = async (transaction) => {
-  // 1. Mark as completed in DB
-  if (transaction.status === 'completed' || transaction.status === 'paid') {
-    return false; // Already processed
-  }
-  
-  transaction.status = 'completed';
-  transaction.paidAt = new Date();
-  await transaction.save();
+// @desc    Check payment status directly from PayOS (No cache)
+// @route   GET /api/payment/check/:orderCode
+// @access  Private
+exports.checkPaymentStatus = async (req, res) => {
+  try {
+    const { orderCode } = req.params;
+    console.log(`[PAYCHECK] Direct query for OrderCode: ${orderCode}`);
 
-  // 2. Update User Balance
-  const user = await User.findById(transaction.user._id || transaction.user);
-  if (user) {
-    user.balance += transaction.coinsChange;
-    user.totalDeposited += Number(transaction.amount) || 0;
-    await user.save();
-    console.log(`[PAYMENT CONFIRMED] Order ${transaction.orderCode} → User ${user.username} +${transaction.coinsChange} coins`);
-  }
-
-  // 3. Execute Minecraft Package Commands (Requirement 10 & 11)
-  if (transaction.package && transaction.playerName && !transaction.rewardDelivered) {
-    const pkg = await Package.findById(transaction.package);
-    if (pkg && pkg.commands && pkg.commands.length > 0) {
-      console.log(`[RCON] Delivering package ${pkg.name} to ${transaction.playerName}`);
-      
-      let allSuccess = true;
-      for (const cmdTemplate of pkg.commands) {
-        const command = cmdTemplate.replace(/{player}/g, transaction.playerName);
-        try {
-          const response = await rconService.sendCommand(command);
-          await PackageExecutionLog.create({
-            paymentId: transaction._id,
-            packageId: pkg._id,
-            playerName: transaction.playerName,
-            command: command,
-            success: true,
-            response: response || 'Success'
-          });
-        } catch (error) {
-          allSuccess = false;
-          console.error(`[RCON] Error executing ${command}:`, error.message);
-          await PackageExecutionLog.create({
-            paymentId: transaction._id,
-            packageId: pkg._id,
-            playerName: transaction.playerName,
-            command: command,
-            success: false,
-            response: error.message
-          });
-        }
-      }
-      
-      if (allSuccess) {
-        transaction.rewardDelivered = true;
-        await transaction.save();
-        console.log(`[RCON] All commands executed successfully for ${transaction.orderCode}`);
-      }
+    const transaction = await Transaction.findOne({ orderCode }).populate('user');
+    if (!transaction) {
+      return res.status(404).json({ message: 'Không tìm thấy giao dịch trên hệ thống' });
     }
-  }
 
-  return true;
+    const payos = await getPayOSInstance();
+    const payosData = await payos.paymentRequests.get(orderCode);
+    console.log(`[PAYCHECK] PayOS status for ${orderCode}: ${payosData.status}`);
+
+    if (payosData.status === 'PAID') {
+      if (transaction.status !== 'completed' && !transaction.rewardDelivered) {
+        transaction.transactionId = payosData.reference || transaction.transactionId;
+        await processSuccessfulPayment(transaction);
+        return res.json({ status: 'completed', message: 'Thanh toán thành công!' });
+      }
+      return res.json({ status: 'completed', message: 'Giao dịch đã hoàn tất' });
+    } else if (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED') {
+      const newStatus = payosData.status.toLowerCase() === 'expired' ? 'expired' : 'cancelled';
+      transaction.status = newStatus;
+      await transaction.save();
+      return res.json({ status: newStatus, message: 'Giao dịch đã bị hủy hoặc hết hạn' });
+    }
+
+    res.json({ status: transaction.status, message: 'Giao dịch đang chờ thanh toán' });
+  } catch (error) {
+    console.error('[PAYCHECK ERROR]', error.message);
+    res.status(500).json({ message: 'Lỗi khi kiểm tra trạng thái trên hệ thống PayOS' });
+  }
 };
+
+
 
 // @desc    Get payment status by orderCode (ACTIVE POLLING from PayOS if still pending)
 // @route   GET /api/payment/status/:orderCode

@@ -68,7 +68,7 @@ export default function CheckoutPage() {
         const { status } = await paymentService.getPaymentStatus(transaction.orderCode);
         console.log('[POLLING] Status received:', status);
         
-        if (status === 'paid' || status === 'Completed') {
+        if (status === 'paid' || status === 'completed' || status === 'Completed') {
           clearInterval(interval);
           console.log('[POLLING] Payment confirmed! Redirecting...');
           toast.success('🎉 Thanh toán thành công! Đang chuyển hướng...');
@@ -110,8 +110,8 @@ export default function CheckoutPage() {
     if (!transaction || isChecking) return;
     setIsChecking(true);
     try {
-      const { status } = await paymentService.getPaymentStatus(transaction.orderCode);
-      if (status === 'paid' || status === 'Completed') {
+      const { status } = await paymentService.checkPaymentStatus(transaction.orderCode);
+      if (status === 'paid' || status === 'completed' || status === 'Completed') {
         toast.success('Thanh toán thành công!');
         navigate('/payment/success/' + transaction._id);
       } else {
