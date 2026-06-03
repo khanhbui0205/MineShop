@@ -27,6 +27,8 @@ export interface UserProfile {
   rank: string;
   battlePassLevel: number;
   battlePassXp: number;
+  minecraftUsername?: string;
+  minecraftVerified?: boolean;
   isBanned?: boolean;
   role?: string;
 }
@@ -47,6 +49,8 @@ export interface StoreItem {
   rights?: string[];
   category?: string;
   image?: string;
+  items?: string[];
+  duration?: string;
 }
 
 // ── Admin Types ──────────────────────────────────────────────

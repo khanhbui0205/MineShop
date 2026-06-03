@@ -48,12 +48,15 @@ exports.createPayment = async (req, res) => {
     const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(Math.random() * 1000));
 
 
-    const domain = process.env.NODE_ENV === 'production' ? config.webhookUrl.split('/api')[0] : 'http://localhost:5173';
+    // Dynamic domains for redirect URLs
+    const domain = process.env.NODE_ENV === 'production' 
+      ? (process.env.FRONTEND_URL_PROD || 'https://mineshop.khanhbui0205.workers.dev')
+      : (process.env.FRONTEND_URL_DEV || 'http://localhost:5173');
     
     const body = {
       orderCode: orderCode,
       amount: pkg.price,
-      description: `MS${orderCode}`, // Use a simple, short format like MS + orderCode for best compatibility
+      description: `MS${orderCode}`,
       items: [
         {
           name: pkg.name,
@@ -61,8 +64,8 @@ exports.createPayment = async (req, res) => {
           price: pkg.price,
         },
       ],
-      returnUrl: config.returnUrl || `${domain}/payment/success`,
-      cancelUrl: config.cancelUrl || `${domain}/payment/failed`,
+      returnUrl: `${domain}/payment/success`,
+      cancelUrl: `${domain}/payment/cancel`,
     };
 
     const paymentLinkRes = await payos.paymentRequests.create(body);
@@ -122,60 +125,67 @@ exports.createPayment = async (req, res) => {
 // @desc    Handle PayOS Webhook
 // @route   POST /api/payment/webhook
 // @access  Public
+// @desc    Handle PayOS Webhook
+// @route   POST /api/payos/webhook
+// @access  Public
 exports.handleWebhook = async (req, res) => {
   try {
-    console.log('[WEBHOOK RECEIVED]', JSON.stringify(req.body).substring(0, 300));
-    const { code } = req.body;
-    
-    // Verify Webhook Data (Checksum)
+    console.log('[WEBHOOK RECEIVED]', JSON.stringify(req.body));
     const payos = await getPayOSInstance();
-    const webhookData = await payos.webhooks.verify(req.body);
-    console.log('[WEBHOOK VERIFIED] OrderCode:', webhookData?.orderCode);
+    
+    // Verify Webhook Data using SDK
+    const webhookData = payos.verifyPaymentWebhookData(req.body.data);
+    console.log('[WEBHOOK VERIFIED] OrderCode:', webhookData?.orderCode, 'Status:', req.body.data?.status);
 
     if (!webhookData) {
-      console.log('[WEBHOOK] Verification failed');
       return res.status(400).json({ message: 'Webhook data verification failed' });
     }
 
     const transaction = await Transaction.findOne({ orderCode: webhookData.orderCode }).populate('user');
     if (!transaction) {
       console.log('[WEBHOOK] Transaction not found for orderCode:', webhookData.orderCode);
-      return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
+      return res.json({ success: true }); // Return Success to PayOS even if not found locally to stop retries if it's an old/unknown order
     }
 
-    console.log('[WEBHOOK] TRANSACTION BEFORE UPDATE:', { id: transaction._id, status: transaction.status });
-
-    // Anti Duplicate
-    if (transaction.status === 'paid' || transaction.status === 'Completed') {
+    // Anti Duplicate - If already completed, skip
+    if (transaction.status === 'completed' || transaction.status === 'paid') {
       console.log('[WEBHOOK] Already processed, skipping');
-      return res.json({ success: true, message: 'Transaction already processed' });
+      return res.json({ success: true });
     }
 
-    if (code === '00') {
+    const payosStatus = req.body.data?.status;
+
+    if (payosStatus === 'PAID') {
+      transaction.transactionId = webhookData.reference || transaction.transactionId;
       await processSuccessfulPayment(transaction);
-    } else {
-      transaction.status = 'failed';
+    } else if (payosStatus === 'CANCELLED' || payosStatus === 'EXPIRED') {
+      transaction.status = 'cancelled';
       await transaction.save();
-      console.log('[WEBHOOK] Payment failed, code:', code);
+      console.log(`[WEBHOOK] Order ${transaction.orderCode} was ${payosStatus}`);
+    } else {
+      console.log(`[WEBHOOK] Order ${transaction.orderCode} status: ${payosStatus}`);
     }
 
     res.json({ success: true });
   } catch (error) {
     console.error('[WEBHOOK ERROR]', error.message);
-    res.status(500).json({ message: error.message });
+    // Don't return error to PayOS or it will keep retrying even if it's just a local logic issue
+    res.json({ success: false, message: error.message });
   }
 };
 
-// Helper: Process a paid transaction (shared between webhook and active polling)
+// Helper: Process a paid transaction
 const processSuccessfulPayment = async (transaction) => {
-  if (transaction.status === 'paid' || transaction.status === 'Completed') {
+  // 1. Mark as completed in DB
+  if (transaction.status === 'completed' || transaction.status === 'paid') {
     return false; // Already processed
   }
   
-  transaction.status = 'paid';
+  transaction.status = 'completed';
+  transaction.paidAt = new Date();
   await transaction.save();
 
-  // 1. Update User Balance
+  // 2. Update User Balance
   const user = await User.findById(transaction.user._id || transaction.user);
   if (user) {
     user.balance += transaction.coinsChange;
@@ -184,11 +194,13 @@ const processSuccessfulPayment = async (transaction) => {
     console.log(`[PAYMENT CONFIRMED] Order ${transaction.orderCode} → User ${user.username} +${transaction.coinsChange} coins`);
   }
 
-  // 2. Execute Minecraft Package Commands if applicable
-  if (transaction.package && transaction.playerName) {
+  // 3. Execute Minecraft Package Commands (Requirement 10 & 11)
+  if (transaction.package && transaction.playerName && !transaction.rewardDelivered) {
     const pkg = await Package.findById(transaction.package);
     if (pkg && pkg.commands && pkg.commands.length > 0) {
-      console.log(`[RCON] Executing commands for package ${pkg.name}, player ${transaction.playerName}`);
+      console.log(`[RCON] Delivering package ${pkg.name} to ${transaction.playerName}`);
+      
+      let allSuccess = true;
       for (const cmdTemplate of pkg.commands) {
         const command = cmdTemplate.replace(/{player}/g, transaction.playerName);
         try {
@@ -201,9 +213,9 @@ const processSuccessfulPayment = async (transaction) => {
             success: true,
             response: response || 'Success'
           });
-          console.log(`[RCON] Executed: ${command}`);
         } catch (error) {
-          console.error(`[RCON] Failed: ${command}`, error.message);
+          allSuccess = false;
+          console.error(`[RCON] Error executing ${command}:`, error.message);
           await PackageExecutionLog.create({
             paymentId: transaction._id,
             packageId: pkg._id,
@@ -213,6 +225,12 @@ const processSuccessfulPayment = async (transaction) => {
             response: error.message
           });
         }
+      }
+      
+      if (allSuccess) {
+        transaction.rewardDelivered = true;
+        await transaction.save();
+        console.log(`[RCON] All commands executed successfully for ${transaction.orderCode}`);
       }
     }
   }
@@ -341,16 +359,39 @@ exports.getPaymentHistory = async (req, res) => {
     const query = { user: req.user._id, type: 'Deposit' };
     if (status) query.status = status;
 
-    // Auto-cancel transactions older than 30 minutes that are still pending
-    const expiryTime = new Date(Date.now() - 30 * 60 * 1000);
-    await Transaction.updateMany(
-      { 
-        user: req.user._id, 
-        status: 'pending', 
-        createdAt: { $lt: expiryTime } 
-      },
-      { status: 'cancelled' }
-    );
+    // SYNC LOGIC (Requirement 18):
+    // Identify transactions that are still 'pending' to sync with PayOS
+    const pendingTransactions = await Transaction.find({ 
+      user: req.user._id, 
+      status: 'pending' 
+    }).limit(5); // Limit sync to prevent overloading for very old accounts
+
+    if (pendingTransactions.length > 0) {
+      const payos = await getPayOSInstance();
+      for (const tx of pendingTransactions) {
+        try {
+          const payosData = await payos.paymentRequests.get(tx.payosOrderId);
+          console.log(`[SYNC] Order ${tx.orderCode} status: ${payosData.status}`);
+          
+          if (payosData.status === 'PAID') {
+            tx.transactionId = payosData.reference || tx.transactionId;
+            await processSuccessfulPayment(tx);
+          } else if (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED') {
+            tx.status = 'cancelled';
+            await tx.save();
+          } else {
+            // Check if too old (30 mins) and not PAID/CANCELLED in PayOS
+            const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+            if (tx.createdAt < thirtyMinsAgo) {
+              tx.status = 'cancelled';
+              await tx.save();
+            }
+          }
+        } catch (syncErr) {
+          console.warn(`[SYNC ERR] Order ${tx.orderCode}:`, syncErr.message);
+        }
+      }
+    }
 
     const skip = (page - 1) * limit;
     const transactions = await Transaction.find(query)

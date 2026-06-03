@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { CheckCircle2, Home, History as HistoryIcon } from 'lucide-react';
+import api from '../../lib/api';
 import paymentService from '../../services/paymentService';
 import type { PaymentTransaction } from '../../services/paymentService';
 
@@ -11,8 +12,23 @@ export default function SuccessPage() {
   const [transaction, setTransaction] = useState<PaymentTransaction | null>(null);
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const orderCode = query.get('orderCode');
+
     if (id) {
       paymentService.getPaymentById(id).then(setTransaction).catch(() => navigate('/store'));
+    } else if (orderCode) {
+      // Find transaction by orderCode if diverted from PayOS
+      api.get(`/payment/status/${orderCode}`)
+        .then(res => {
+          // We need the full detail, so call getPaymentById with the real ID
+          if (res.data.transactionId) {
+             paymentService.getPaymentById(res.data.transactionId).then(setTransaction);
+          }
+        })
+        .catch(() => navigate('/'));
+    } else {
+      navigate('/');
     }
   }, [id, navigate]);
 

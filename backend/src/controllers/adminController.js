@@ -472,4 +472,27 @@ exports.getAllTransactions = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const rconService = require('../services/rconService');
 
+// @desc    Test RCON connection
+// @route   POST /api/admin/test-rcon
+// @access  Private/Admin
+exports.testRcon = async (req, res) => {
+  try {
+    const { command } = req.body;
+    if (!command) {
+      return res.status(400).json({ message: 'Vui lòng nhập lệnh' });
+    }
+
+    const response = await rconService.sendCommand(command);
+    res.json({
+      success: true,
+      response
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: 'Lỗi kết nối RCON: ' + error.message 
+    });
+  }
+};

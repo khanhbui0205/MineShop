@@ -187,10 +187,16 @@ export default function HistoryPage() {
                     <td className="py-6 px-8 text-center text-slate-600">
                       {(tx.status === 'pending') && (
                         <button
-                          onClick={() => navigate('/payment/checkout/' + tx._id)}
+                          onClick={() => {
+                            if (tx.paymentUrl) {
+                              window.open(tx.paymentUrl, '_blank');
+                            } else {
+                              navigate('/payment/checkout/' + tx._id);
+                            }
+                          }}
                           className="px-4 py-2 bg-indigo-50 hover:bg-slate-900 text-indigo-600 hover:text-white border border-indigo-100 font-mono text-[10px] font-bold tracking-widest rounded-xl transition-all shadow-sm"
                         >
-                          TIẾP TỤC
+                          TIẾP TỤC THANH TOÁN
                         </button>
                       )}
                     </td>

@@ -26,9 +26,7 @@ interface AdminScreenProps {
   initialTab?: AdminTab;
 }
 
-// Format VNĐ
-export const formatVND = (amount: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+import { formatVND } from '../lib/utils';
 
 export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan' }: AdminScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);

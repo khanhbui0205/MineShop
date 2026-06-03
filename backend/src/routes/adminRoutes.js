@@ -18,6 +18,7 @@ const {
   updatePaymentConfig,
   testPaymentConfig,
   getAllTransactions,
+  testRcon,
 } = require('../controllers/adminController');
 
 // Tất cả routes admin đều cần xác thực + quyền admin
@@ -46,5 +47,6 @@ router.patch('/packages/:id/toggle', togglePackage);
 router.get('/payment-config', getPaymentConfig);
 router.put('/payment-config', updatePaymentConfig);
 router.post('/payment-config/test', testPaymentConfig);
+router.post('/test-rcon', testRcon);
 
 module.exports = router;

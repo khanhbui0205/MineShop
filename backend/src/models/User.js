@@ -71,6 +71,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    minecraftUsername: {
+      type: String,
+      default: '',
+    },
+    minecraftVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
