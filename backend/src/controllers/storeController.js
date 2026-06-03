@@ -56,7 +56,7 @@ exports.purchaseItem = async (req, res) => {
       item: item.name,
       amount: item.currency === 'Coins' ? `-${item.price} Coins` : `+$${item.price.toFixed(2)}`,
       coinsChange: item.currency === 'Coins' ? -item.price : (item.type === 'Coins' ? (item.price === 10 ? 1250 : 500) : 0),
-      status: 'Completed'
+      status: 'completed'
     });
 
     res.json({

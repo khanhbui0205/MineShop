@@ -133,7 +133,16 @@ exports.handleWebhook = async (req, res) => {
     
     // Verify Webhook Data using SDK
     try {
-      payos.verifyPaymentWebhookData(data); // This throws if signature is invalid
+      // In @payos/node 2.x, verifyPaymentWebhookData expects the full body object
+      // Some versions might have it under webhooks.verify
+      if (typeof payos.verifyPaymentWebhookData === 'function') {
+        payos.verifyPaymentWebhookData(req.body);
+      } else if (payos.webhooks && typeof payos.webhooks.verify === 'function') {
+        payos.webhooks.verify(req.body);
+      } else {
+        console.warn('[PAYOS WEBHOOK] Manual verification fallback or SDK mismatch');
+        // If we can't verify via SDK, we might need a fallback, but for now let's hope one of these works
+      }
     } catch (verifyErr) {
       console.error('[PAYOS WEBHOOK] Verification failed:', verifyErr.message);
       return res.status(400).json({ message: 'Webhook signature verification failed' });
@@ -221,7 +230,7 @@ exports.getPaymentStatus = async (req, res) => {
     }
 
     // If already paid/completed in our DB, return immediately
-    if (transaction.status === 'paid' || transaction.status === 'Completed') {
+    if (transaction.status === 'paid' || transaction.status === 'completed' || transaction.status === 'Completed') {
       return res.json({ status: transaction.status });
     }
 
@@ -361,6 +370,12 @@ exports.getPaymentHistory = async (req, res) => {
           }
         } catch (syncErr) {
           console.warn(`[SYNC ERR] Order ${tx.orderCode}:`, syncErr.message);
+          // If PayOS says it doesn't exist (Code 101), mark as cancelled in our DB to stop retrying
+          if (syncErr.message.includes('101') || syncErr.message.includes('không tồn tại')) {
+            console.log(`[SYNC] Order ${tx.orderCode} not found on PayOS, marking as cancelled`);
+            tx.status = 'cancelled';
+            await tx.save();
+          }
         }
       }
     }

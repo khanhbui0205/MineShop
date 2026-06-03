@@ -363,7 +363,7 @@ exports.purchasePackage = async (req, res) => {
       item: pkg.name,
       amount: `+${(pkg.coinAmount + pkg.bonusCoin).toLocaleString('vi-VN')} Xu`,
       coinsChange: pkg.coinAmount + pkg.bonusCoin,
-      status: 'Completed'
+      status: 'completed'
     });
 
     res.json({
