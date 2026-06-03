@@ -83,7 +83,7 @@ export default function CheckoutPage() {
       } catch (error) {
         console.error('[POLLING] Check status error:', error);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 5000); // Poll every 5 seconds as requested
 
     return () => {
       console.log('[POLLING] Cleanup interval');

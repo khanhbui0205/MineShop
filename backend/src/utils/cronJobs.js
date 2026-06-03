@@ -37,15 +37,13 @@ const initCronJobs = () => {
           if (payosData.status === 'PAID') {
             tx.transactionId = payosData.reference || tx.transactionId;
             await processSuccessfulPayment(tx);
-            console.log(`[CRON] Order ${tx.orderCode} synced to PAID/COMPLETED`);
+            console.log(`[CRON] Order ${tx.orderCode} synced to completed`);
           } else if (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED') {
-            tx.status = payosData.status.toLowerCase();
+            tx.status = 'cancelled';
             await tx.save();
-            console.log(`[CRON] Order ${tx.orderCode} synced to ${tx.status}`);
+            console.log(`[CRON] Order ${tx.orderCode} synced to cancelled (PayOS: ${payosData.status})`);
           } else {
-             // If still pending but too old (e.g. > 1 hour), we can mark as cancelled locally 
-             // but only if PayOS also says it's not PAID. 
-             // PayOS links usually expire in 30 mins or whatever is set.
+             // If still pending but too old (e.g. > 1 hour)
              const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
              if (tx.createdAt < oneHourAgo) {
                tx.status = 'cancelled';
@@ -55,6 +53,11 @@ const initCronJobs = () => {
           }
         } catch (err) {
           console.error(`[CRON ERR] Failed to sync order ${tx.orderCode}:`, err.message);
+          // If PayOS says it doesn't exist (Code 101), mark as cancelled locally
+          if (err.message.includes('101') || err.message.includes('không tồn tại')) {
+            tx.status = 'cancelled';
+            await tx.save();
+          }
         }
       }
     } catch (error) {

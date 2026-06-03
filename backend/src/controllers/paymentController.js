@@ -125,23 +125,18 @@ exports.createPayment = async (req, res) => {
 
 exports.handleWebhook = async (req, res) => {
   try {
-    const { data, signature, event } = req.body;
-    console.log(`[PAYOS WEBHOOK] Received event: ${event} for OrderCode: ${data?.orderCode}`);
+    const { data, signature } = req.body;
+    console.log(`[PAYOS WEBHOOK] Received Webhook for OrderCode: ${data?.orderCode}`);
     console.log(`[PAYOS WEBHOOK BODY]`, JSON.stringify(req.body));
 
     const payos = await getPayOSInstance();
     
     // Verify Webhook Data using SDK
     try {
-      // In @payos/node 2.x, verifyPaymentWebhookData expects the full body object
-      // Some versions might have it under webhooks.verify
       if (typeof payos.verifyPaymentWebhookData === 'function') {
         payos.verifyPaymentWebhookData(req.body);
       } else if (payos.webhooks && typeof payos.webhooks.verify === 'function') {
         payos.webhooks.verify(req.body);
-      } else {
-        console.warn('[PAYOS WEBHOOK] Manual verification fallback or SDK mismatch');
-        // If we can't verify via SDK, we might need a fallback, but for now let's hope one of these works
       }
     } catch (verifyErr) {
       console.error('[PAYOS WEBHOOK] Verification failed:', verifyErr.message);
@@ -151,25 +146,29 @@ exports.handleWebhook = async (req, res) => {
     const transaction = await Transaction.findOne({ orderCode: data.orderCode }).populate('user');
     if (!transaction) {
       console.warn('[PAYOS WEBHOOK] Transaction not found for OrderCode:', data.orderCode);
-      return res.json({ success: true }); // Stop PayOS retries
-    }
-
-    console.log(`[PAYOS WEBHOOK] Processing Order ${transaction.orderCode}. Current Status: ${transaction.status}, New Status: ${data.status}`);
-
-    // Anti-duplicate & Idempotency
-    if (transaction.status === 'completed' || transaction.status === 'paid' || transaction.rewardDelivered) {
-      console.log('[PAYOS WEBHOOK] Transaction already processed/fulfilled. Skipping.');
       return res.json({ success: true });
     }
 
-    if (data.status === 'PAID') {
+    console.log(`[PAYOS WEBHOOK] Processing Order ${transaction.orderCode}. Current Status: ${transaction.status}, PayOS Data Code: ${data.code}`);
+
+    // Anti-duplicate & Idempotency
+    if (transaction.status === 'completed' || transaction.rewardDelivered) {
+      console.log('[PAYOS WEBHOOK] Transaction already completed/fulfilled. Skipping.');
+      return res.json({ success: true });
+    }
+
+    // Determine action based on status or code
+    if (data.code === '00' || data.status === 'PAID') {
       transaction.transactionId = data.reference || transaction.transactionId;
       await processSuccessfulPayment(transaction);
-      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} marked as COMPLETED`);
+      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} marked as completed`);
     } else if (data.status === 'CANCELLED' || data.status === 'EXPIRED') {
       transaction.status = 'cancelled';
       await transaction.save();
-      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} marked as ${data.status}`);
+      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} marked as cancelled`);
+    } else {
+      // Other codes might mean failure or cancellation
+      console.log(`[PAYOS WEBHOOK] Order ${transaction.orderCode} received code: ${data.code}, status: ${data.status}`);
     }
 
     res.json({ success: true });
@@ -204,10 +203,9 @@ exports.checkPaymentStatus = async (req, res) => {
       }
       return res.json({ status: 'completed', message: 'Giao dịch đã hoàn tất' });
     } else if (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED') {
-      const newStatus = payosData.status.toLowerCase() === 'expired' ? 'expired' : 'cancelled';
-      transaction.status = newStatus;
+      transaction.status = 'cancelled';
       await transaction.save();
-      return res.json({ status: newStatus, message: 'Giao dịch đã bị hủy hoặc hết hạn' });
+      return res.json({ status: 'cancelled', message: 'Giao dịch đã bị hủy hoặc hết hạn' });
     }
 
     res.json({ status: transaction.status, message: 'Giao dịch đang chờ thanh toán' });
@@ -229,8 +227,8 @@ exports.getPaymentStatus = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
     }
 
-    // If already paid/completed in our DB, return immediately
-    if (transaction.status === 'paid' || transaction.status === 'completed' || transaction.status === 'Completed') {
+    // If already completed in our DB, return immediately
+    if (transaction.status === 'completed') {
       return res.json({ status: transaction.status });
     }
 
@@ -254,14 +252,13 @@ exports.getPaymentStatus = async (req, res) => {
           console.log('[STATUS API] PayOS confirmed PAID! Updating DB...');
           transaction.transactionId = payosData.reference || payosData.id || '';
           await processSuccessfulPayment(transaction);
-          return res.json({ status: 'paid', transactionId: transaction.transactionId });
+          return res.json({ status: 'completed', transactionId: transaction.transactionId });
         }
 
         if (payosData && (payosData.status === 'CANCELLED' || payosData.status === 'EXPIRED')) {
-          const newStatus = payosData.status.toLowerCase() === 'expired' ? 'expired' : 'cancelled';
-          transaction.status = newStatus;
+          transaction.status = 'cancelled';
           await transaction.save();
-          return res.json({ status: newStatus });
+          return res.json({ status: 'cancelled' });
         }
       } catch (payosErr) {
         // If PayOS query fails, fall through to return DB status
