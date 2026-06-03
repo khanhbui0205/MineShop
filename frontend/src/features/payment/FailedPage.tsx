@@ -16,9 +16,9 @@ export default function FailedPage() {
           <XCircle className="text-rose-500" size={48} />
         </div>
 
-        <h1 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Thanh toán thất bại</h1>
+        <h1 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Thanh toán chưa hoàn tất</h1>
         <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">
-          Rất tiếc, giao dịch của bạn đã bị hủy hoặc gặp lỗi trong quá trình xử lý. Đừng lo lắng, tiền của bạn vẫn an toàn.
+          Đơn hàng đã bị hủy hoặc hết hạn thanh toán. Bạn có thể thử lại hoặc liên hệ hỗ trợ nếu cần thiết.
         </p>
 
         <div className="flex flex-col gap-3">

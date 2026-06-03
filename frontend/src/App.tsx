@@ -137,7 +137,7 @@ export default function App() {
           } 
         />
         <Route 
-          path="/payment/success/:id" 
+          path="/payment/success" 
           element={
             currentUser 
             ? <MainLayout user={currentUser} onLogout={handleLogout}><SuccessPage /></MainLayout> 
@@ -145,7 +145,7 @@ export default function App() {
           } 
         />
         <Route 
-          path="/payment/failed" 
+          path="/payment/cancel" 
           element={
             currentUser 
             ? <MainLayout user={currentUser} onLogout={handleLogout}><FailedPage /></MainLayout> 

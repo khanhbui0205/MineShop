@@ -51,3 +51,29 @@ exports.deposit = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Link Minecraft account
+// @route   POST /api/users/link-minecraft
+// @access  Private
+exports.linkMinecraft = async (req, res) => {
+  try {
+    const { minecraftUsername } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    user.minecraftUsername = minecraftUsername;
+    user.minecraftVerified = true; // For now we assume if they call this after check-player it's verified
+    await user.save();
+
+    res.json({ 
+      message: 'Liên kết tài khoản Minecraft thành công', 
+      minecraftUsername: user.minecraftUsername,
+      minecraftVerified: user.minecraftVerified
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import api from '../lib/api';
 import { toast } from 'react-hot-toast';
-import { formatVND } from './AdminScreen';
+import { formatVND } from '../lib/utils';
 
 interface PaymentConfig {
   clientId: string;

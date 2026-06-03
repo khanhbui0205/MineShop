@@ -5,7 +5,7 @@ import {
   Trash2, Edit2, PlusCircle, Clock, X, Eye, EyeOff, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import type { CoinPackage, AuditLog, AdminStats } from '../types';
-import { formatVND } from './AdminScreen';
+import { formatVND } from '../lib/utils';
 
 interface DashboardAdminProps {
   stats: AdminStats;

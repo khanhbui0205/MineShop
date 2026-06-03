@@ -6,7 +6,7 @@ import {
   UserCheck, Lock, X, Mail, Phone,
 } from 'lucide-react';
 import type { Player, AuditLog } from '../types';
-import { formatVND } from './AdminScreen';
+import { formatVND } from '../lib/utils';
 import api from '../lib/api';
 
 interface UsersAdminProps {

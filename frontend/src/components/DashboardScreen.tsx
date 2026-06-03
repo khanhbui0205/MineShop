@@ -34,7 +34,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { Transaction, UserProfile, StoreItem, PortalTab } from '../types';
 import { TOP_DONATORS } from '../data';
 import api from '../lib/api';
-import { formatVND } from './AdminScreen';
+import { formatVND } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import paymentService from '../services/paymentService';
 
@@ -54,6 +54,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     rank: user.rank || 'Member',
     battlePassLevel: user.battlePassLevel || 1,
     battlePassXp: user.battlePassXp || 0,
+    minecraftUsername: user.minecraftUsername || '',
+    minecraftVerified: user.minecraftVerified || false,
   });
 
 
@@ -63,8 +65,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   const [storeFilter, setStoreFilter] = useState<'All' | 'Rank' | 'BattlePass' | 'Cosmetic' | 'Coins'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Daily claim check
-  const [dailyClaimed, setDailyClaimed] = useState(false);
+  // Minecraft Account Linking States
+  const [minecraftInput, setMinecraftInput] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
+  const [isManualPlayerName, setIsManualPlayerName] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -84,7 +88,9 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           description: pkg.description || '',
           price: pkg.price,
           currency: 'USD', // Still use USD internally to trigger VNĐ formatting in UI
-          badge: pkg.bonusCoin > 0 ? `+${pkg.bonusCoin.toLocaleString('vi-VN')} Xu Thưởng` : undefined,
+          badge: pkg.category === 'Coin' 
+            ? `${(pkg.coinAmount + pkg.bonusCoin).toLocaleString('vi-VN')} Xu`
+            : (pkg.bonusCoin > 0 ? `+${pkg.bonusCoin.toLocaleString('vi-VN')} Xu Thưởng` : undefined),
           icon: pkg.category === 'Coin' ? 'payments' : pkg.category === 'VIP' ? 'workspace_premium' : 'stars',
           type: pkg.category === 'Coin' ? 'Coins' : pkg.category === 'VIP' ? 'Rank' : 'BattlePass',
           // New fields for details
@@ -94,6 +100,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           rights: pkg.rights || [],
           category: pkg.category,
           image: pkg.image,
+          items: pkg.items || [],
+          duration: pkg.duration || '',
         }));
         setStoreItems(mappedItems);
       } catch (error) {
@@ -124,35 +132,30 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // 1. Claim Daily Coins
-  const handleClaimDaily = async () => {
-    if (dailyClaimed) {
-      triggerNotification('Bạn đã nhận quà hằng ngày rồi! Vui lòng thử lại sau 24 giờ.', 'refuse');
+  // Link Minecraft Account
+  const handleLinkMinecraft = async () => {
+    if (!minecraftInput.trim()) {
+      triggerNotification('Vui lòng nhập tên Minecraft', 'refuse');
       return;
     }
-
+    setIsLinking(true);
     try {
-      const response = await api.post('/users/claim-daily');
-      setUserProfile(prev => ({
-        ...prev,
-        balance: response.data.balance
-      }));
-      setDailyClaimed(true);
-
-      const newTx: Transaction = {
-        id: `tx-${Date.now()}`,
-        _id: `tx-${Date.now()}`,
-        type: 'Deposit',
-        item: 'Quà đăng nhập hằng ngày',
-        amount: '+5 Coins',
-        coinsChange: 5,
-        date: 'Vừa xong',
-        status: 'Completed'
-      };
-      setTransactions(prev => [newTx, ...prev]);
-      triggerNotification('Chúc mừng! Đã cộng +5 Coins vào số dư tài khoản của bạn.');
+      const checkRes = await api.get(`/minecraft/check-player/${minecraftInput.trim()}`);
+      if (checkRes.data.exists) {
+        await api.post('/users/link-minecraft', { minecraftUsername: minecraftInput.trim() });
+        setUserProfile(prev => ({ 
+          ...prev, 
+          minecraftUsername: minecraftInput.trim(), 
+          minecraftVerified: true 
+        }));
+        triggerNotification('Liên kết tài khoản Minecraft thành công!');
+      } else {
+        triggerNotification('Không tìm thấy người chơi trên máy chủ.', 'refuse');
+      }
     } catch (error: any) {
-      triggerNotification('Không thể nhận quà. Vui lòng thử lại sau.', 'refuse');
+      triggerNotification(error.response?.data?.message || 'Lỗi khi liên kết tài khoản.', 'refuse');
+    } finally {
+      setIsLinking(false);
     }
   };
 
@@ -207,10 +210,17 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     }
 
     try {
+      // Re-verify player before creating order as per requirement 7
+      const verifyRes = await api.post('/minecraft/verify-player', { username: playerNameInput.trim() });
+      if (!verifyRes.data.success) {
+        triggerNotification('Không tìm thấy người chơi trên máy chủ.', 'refuse');
+        return;
+      }
+
       const response = await paymentService.createPayment(selectedPackage.id || (selectedPackage as any)._id, playerNameInput.trim());
       navigate(`/payment/checkout/${response.transactionId}`);
     } catch (error: any) {
-      triggerNotification(error.response?.data?.message || 'Không thể tạo yêu cầu thanh toán. Vui lòng thử lại.', 'refuse');
+      triggerNotification(error.response?.data?.message || 'Không tìm thấy người chơi trên máy chủ hoặc lỗi thanh toán.', 'refuse');
     }
   };
 
@@ -437,19 +447,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               </span>
             </div>
 
-            {/* Daily Login Reward Box */}
-            <button 
-              onClick={handleClaimDaily}
-              disabled={dailyClaimed}
-              className={`hidden md:flex items-center gap-1.5 text-xs py-2 px-4 rounded-lg border transition-all ${
-                dailyClaimed 
-                ? 'opacity-60 cursor-not-allowed text-slate-400 bg-slate-50 border-slate-200' 
-                : 'text-amber-800 bg-amber-50 border-amber-200 hover:bg-amber-100/70 font-semibold animate-pulse shadow-sm'
-              }`}
-            >
-              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span>{dailyClaimed ? 'Đã điểm danh' : 'Nhận 5 Xu'}</span>
-            </button>
+
 
             {/* Bell Indicator */}
             <button 
@@ -524,13 +522,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       >
                         Khám phá Cửa hàng
                       </button>
-                      <button 
-                        onClick={handleClaimDaily}
-                        disabled={dailyClaimed}
-                        className="py-2.5 px-5 bg-slate-50 hover:bg-slate-100 text-indigo-600 border border-slate-200 rounded text-xs transition-colors font-semibold cursor-pointer"
-                      >
-                        {dailyClaimed ? '✓ Hôm nay đã nhận quà' : '★ Nhận 5 Xu Điểm Danh'}
-                      </button>
+
                     </div>
                   </div>
 
@@ -860,7 +852,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     return (
                       <div 
                         key={item.id}
-                        className="bg-white rounded-2xl p-6 flex flex-col justify-between border border-slate-200/80 hover:border-indigo-300 hover:scale-[1.01] transition-all relative group shadow-md"
+                        onClick={() => handlePurchaseItem(item)}
+                        className="bg-white rounded-2xl p-6 flex flex-col justify-between border border-slate-200/80 hover:border-indigo-300 hover:scale-[1.01] transition-all relative group shadow-md cursor-pointer"
                       >
                         {item.badge && (
                           <span className="absolute top-4 right-4 bg-amber-50 border border-amber-200 text-amber-700 font-mono text-[9px] uppercase font-bold px-2 py-0.5 rounded">
@@ -1120,9 +1113,62 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   
                   {/* Security panel card */}
                   <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 border border-slate-200 shadow-md">
-                    <h4 className="font-display font-extrabold text-sm text-slate-950 uppercase tracking-wider border-b border-slate-100 pb-2">
-                      Bảo mật & Liên kết
-                    </h4>
+                    {/* Minecraft Account Linking */}
+                    <div className="flex flex-col gap-4 py-4 border-b border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="block font-bold text-slate-800 uppercase tracking-tight text-xs">Minecraft Account</span>
+                          {userProfile.minecraftUsername ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs font-black text-indigo-600">{userProfile.minecraftUsername}</span>
+                              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                Đã liên kết
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="block text-[10px] text-slate-400 font-medium mt-1">Bạn chưa liên kết tài khoản Minecraft.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {(!userProfile.minecraftUsername) && (
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Nhập Minecraft Username..."
+                            value={minecraftInput}
+                            onChange={e => setMinecraftInput(e.target.value)}
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button 
+                            onClick={handleLinkMinecraft}
+                            disabled={isLinking || !minecraftInput.trim()}
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isLinking ? 'Đang kiểm tra...' : 'Liên kết'}
+                          </button>
+                        </div>
+                      )}
+
+                      {userProfile.minecraftUsername && (
+                        <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50 mt-2">
+                          {userProfile.username !== userProfile.minecraftUsername ? (
+                            <div className="flex items-start gap-2">
+                              <Bell className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                              <p className="text-[10px] text-slate-600 font-medium">
+                                Khuyến nghị sử dụng tên tài khoản web giống với tên trong game để thuận tiện khi mua vật phẩm.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                              <span className="text-[10px] text-emerald-700 font-bold">✓ Tên tài khoản khớp với nhân vật Minecraft</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Checkbox item 1 */}
                     <div className="flex items-center justify-between py-2 border-b border-slate-50">
@@ -1306,6 +1352,12 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <p className="text-sm text-slate-600 leading-relaxed font-medium">
                         {selectedDetail.description || 'Gói nạp này chưa có mô tả chi tiết từ ban quản trị.'}
                       </p>
+                      {selectedDetail.duration && (
+                        <p className="text-xs text-indigo-600 font-bold mt-2 flex items-center gap-1">
+                          <Flame size={12} />
+                          Hạn sử dụng: {selectedDetail.duration}
+                        </p>
+                      )}
                     </div>
 
                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
@@ -1317,11 +1369,30 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         <span className="text-xs font-bold text-emerald-600">Thưởng kèm theo</span>
                         <span className="text-sm font-black text-emerald-600">+{selectedDetail.bonusCoin?.toLocaleString()} Xu</span>
                       </div>
+                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-100">
+                        <span className="text-xs font-bold text-indigo-600">Tổng cộng nhận</span>
+                        <span className="text-sm font-black text-indigo-600">
+                          {((selectedDetail.coinAmount || 0) + (selectedDetail.bonusCoin || 0)).toLocaleString()} Xu
+                        </span>
+                      </div>
                       <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
                         <span className="text-[10px] font-black text-slate-400 uppercase">Giá thanh toán</span>
                         <span className="text-xl font-black text-indigo-600">{formatVND(selectedDetail.price)}</span>
                       </div>
                     </div>
+
+                    {selectedDetail.items && selectedDetail.items.length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vật phẩm đi kèm</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedDetail.items.map((item, idx) => (
+                            <div key={idx} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200">
+                              • {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-6">
@@ -1339,16 +1410,18 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       </div>
                     </div>
 
-                    <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lệnh sẽ thực thi (RCON)</h4>
-                      <div className="space-y-1.5">
-                        {selectedDetail.commands?.map((cmd, idx) => (
-                          <div key={idx} className="font-mono text-[10px] p-2 bg-slate-900 text-slate-300 rounded border border-slate-800 break-all">
-                            {cmd}
-                          </div>
-                        )) || <span className="text-xs text-slate-400">Không có lệnh đi kèm.</span>}
+                    {user.role === 'admin' && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lệnh sẽ thực thi (RCON)</h4>
+                        <div className="space-y-1.5">
+                          {selectedDetail.commands?.map((cmd, idx) => (
+                            <div key={idx} className="font-mono text-[10px] p-2 bg-slate-900 text-slate-300 rounded border border-slate-800 break-all">
+                              {cmd}
+                            </div>
+                          )) || <span className="text-xs text-slate-400">Không có lệnh đi kèm.</span>}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1361,10 +1434,11 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   Đóng
                 </button>
                 <button 
-                  onClick={() => {
+                   onClick={() => {
                     setSelectedPackage(selectedDetail);
-                    setPlayerNameInput('');
-                    setIsPlayerVerified(false);
+                    setPlayerNameInput(userProfile.minecraftUsername || '');
+                    setIsPlayerVerified(!!userProfile.minecraftUsername);
+                    setIsManualPlayerName(false);
                     setShowDetailModal(false);
                     setShowPurchaseModal(true);
                   }}
@@ -1429,7 +1503,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="flex items-center gap-1.5">
                       <Coins className="w-4 h-4 text-indigo-600" />
                       <span className="text-lg font-black text-indigo-600 font-mono">
-                        {selectedPackage.badge ? selectedPackage.badge.split(' ')[0] : 'Tùy gói'}
+                        {((selectedPackage.coinAmount || 0) + (selectedPackage.bonusCoin || 0)).toLocaleString()} Xu
                       </span>
                     </div>
                   </div>
@@ -1460,37 +1534,65 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                    </div>
                    
                    <div className="flex gap-2">
-                     <div className="relative flex-1">
-                        <input 
-                          type="text"
-                          placeholder="Ví dụ: Notch, kingxu2004..."
-                          className={`w-full bg-slate-50 border rounded-xl py-3 px-4 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
-                            isPlayerVerified ? 'border-emerald-500 focus:ring-emerald-500' : 'border-slate-200 focus:ring-indigo-500'
+                     {(!isManualPlayerName && userProfile.minecraftUsername) ? (
+                       <div className="flex-1 flex items-center justify-between bg-slate-50 border border-indigo-100 rounded-xl py-3 px-4 shadow-sm">
+                         <div className="flex items-center gap-3">
+                           <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                             <Users className="w-4 h-4 text-indigo-600" />
+                           </div>
+                           <span className="text-sm font-black text-slate-900">{playerNameInput}</span>
+                         </div>
+                         <button 
+                           onClick={() => {
+                             setIsManualPlayerName(true);
+                             setIsPlayerVerified(false);
+                           }}
+                           className="text-[10px] font-black text-indigo-600 hover:underline px-2 py-1 bg-indigo-50 rounded-lg transition-colors"
+                         >
+                           ĐỔI NHÂN VẬT
+                         </button>
+                       </div>
+                     ) : (
+                       <>
+                        <div className="relative flex-1">
+                            <input 
+                              type="text"
+                              placeholder="Ví dụ: Notch, kingxu2004..."
+                              className={`w-full bg-slate-50 border rounded-xl py-3 px-4 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
+                                isPlayerVerified ? 'border-emerald-500 focus:ring-emerald-500' : 'border-slate-200 focus:ring-indigo-500'
+                              }`}
+                              value={playerNameInput}
+                              onChange={e => {
+                                setPlayerNameInput(e.target.value);
+                                setIsPlayerVerified(false);
+                              }}
+                            />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCheckPlayer}
+                          disabled={isCheckingPlayer || !playerNameInput.trim()}
+                          className={`px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center min-w-[100px] ${
+                            isCheckingPlayer ? 'bg-slate-100 text-slate-400' : 
+                            isPlayerVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-white hover:bg-indigo-600'
                           }`}
-                          value={playerNameInput}
-                          onChange={e => {
-                            setPlayerNameInput(e.target.value);
-                            setIsPlayerVerified(false);
-                          }}
-                        />
-                     </div>
-                     <button
-                       type="button"
-                       onClick={handleCheckPlayer}
-                       disabled={isCheckingPlayer || !playerNameInput.trim()}
-                       className={`px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center min-w-[100px] ${
-                         isCheckingPlayer ? 'bg-slate-100 text-slate-400' : 
-                         isPlayerVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-white hover:bg-indigo-600'
-                       }`}
-                     >
-                       {isCheckingPlayer ? (
-                         <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                       ) : isPlayerVerified ? 'Đã Check' : 'Kiểm tra'}
-                     </button>
+                        >
+                          {isCheckingPlayer ? (
+                            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          ) : isPlayerVerified ? 'Đã Check' : 'Kiểm tra'}
+                        </button>
+                       </>
+                     )}
                    </div>
-                   <p className="text-[10px] text-slate-400 italic">
-                     * Bạn phải nhập đúng tên đang sử dụng trên server để hệ thống cấp phát vật phẩm.
-                   </p>
+                   {!isManualPlayerName && userProfile.minecraftUsername ? (
+                     <p className="text-[10px] text-emerald-600 font-medium">
+                       ✓ Hệ thống sẽ gửi vật phẩm đến nhân vật đã liên kết của bạn.
+                     </p>
+                   ) : (
+                     <p className="text-[10px] text-slate-400 italic">
+                       * Bạn phải nhập đúng tên đang sử dụng trên server để hệ thống cấp phát vật phẩm.
+                     </p>
+                   )}
                 </div>
 
                 {/* Actions */}

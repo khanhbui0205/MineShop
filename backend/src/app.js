@@ -31,29 +31,28 @@ app.use(helmet());
 
 // Enable CORS with dynamic origin support
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL_DEV,
+  process.env.FRONTEND_URL_PROD,
   "http://localhost:5173",
-  "https://mineshop.khanhbui0205.workers.dev",
-  "https://cloudflare-workers-autoconfig-mineshop.khanhbui0205.workers.dev" // Origin thực tế mới
+  "https://mineshop.khanhbui0205.workers.dev"
 ].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    } else {
+      console.log('Origin not allowed by CORS:', origin);
+      return callback(new Error('CORS not allowed'), false);
     }
-    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Xử lý thêm preflight OPTIONS (Tương thích tốt nhất với Express 5)
-app.options('*', cors());
+// CORS isAlready handled by app.use(cors(...)) above.
 
 // Middleware normalize multiple slashes (e.g. //api -> /api)
 app.use((req, res, next) => {
@@ -68,6 +67,7 @@ app.use('/api/store', storeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/payos', paymentRoutes);
 app.use('/api/admin/server-control', serverControlRoutes);
 app.use('/api/minecraft', minecraftRoutes);
 
@@ -80,7 +80,8 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
-    status: "ok"
+    status: "ok",
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 

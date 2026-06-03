@@ -53,6 +53,11 @@ const transactionSchema = new mongoose.Schema(
     accountName: String,
     description: String,
     bankName: String,
+    rewardDelivered: {
+      type: Boolean,
+      default: false,
+    },
+    paidAt: Date,
   },
   {
     timestamps: true,
