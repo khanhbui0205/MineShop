@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { checkPlayer, verifyPlayer } = require('../controllers/minecraftController');
+const { getPlayerBalance, verifyPlayer } = require('../controllers/minecraftController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.post('/check-player', protect, checkPlayer);
-router.get('/check-player/:username', protect, checkPlayer);
-router.post('/verify-player', protect, verifyPlayer);
+router.get('/balance/:username', protect, getPlayerBalance);
+router.post('/verify', protect, verifyPlayer);
 
 module.exports = router;

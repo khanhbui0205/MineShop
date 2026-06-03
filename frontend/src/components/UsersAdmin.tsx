@@ -75,6 +75,8 @@ export default function UsersAdmin({
         rank: u.rank || 'Member',
         donated: u.totalDeposited || 0,
         balance: u.balance || 0,
+        minecraftUsername: u.minecraftUsername || '',
+        minecraftLastSync: u.minecraftLastSync,
         role: u.role,
         lastActive: u.lastLoginAt
           ? new Date(u.lastLoginAt).toLocaleDateString('vi-VN')
@@ -252,6 +254,11 @@ export default function UsersAdmin({
                               <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                                 ID: {player.id.substring(0, 12)}...
                               </p>
+                              {player.minecraftUsername && (
+                                <p className="text-[10px] text-indigo-400 font-bold mt-0.5">
+                                  MC: {player.minecraftUsername}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -418,11 +425,13 @@ export default function UsersAdmin({
 
               <div className="grid grid-cols-2 gap-3 mb-5">
                 {[
-                  { label: 'Số dư', value: `${(selectedPlayer.balance || 0).toLocaleString('vi-VN')} Xu` },
+                  { label: 'Số dư (Server)', value: `${(selectedPlayer.balance || 0).toLocaleString('vi-VN')} Xu` },
+                  { label: 'MC Username', value: selectedPlayer.minecraftUsername || '—' },
                   { label: 'Tổng nạp', value: formatVND(selectedPlayer.donated) },
                   { label: 'Hạng', value: selectedPlayer.rank },
                   { label: 'Vai trò', value: selectedPlayer.role === 'admin' ? 'Admin' : 'Thành viên' },
                   { label: 'Trạng thái', value: selectedPlayer.isBanned ? '⛔ Đã khóa' : '✅ Hoạt động' },
+                  { label: 'Đồng bộ lúc', value: selectedPlayer.minecraftLastSync ? new Date(selectedPlayer.minecraftLastSync).toLocaleTimeString('vi-VN') : '—' },
                   { label: 'Đăng nhập cuối', value: selectedPlayer.lastActive || '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-white/5 rounded-xl p-3">

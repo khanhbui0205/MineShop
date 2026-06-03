@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Home, 
   ShoppingCart, 
@@ -37,6 +37,7 @@ import api from '../lib/api';
 import { formatVND } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import paymentService from '../services/paymentService';
+import minecraftService from '../services/minecraftService';
 
 
 interface DashboardScreenProps {
@@ -74,11 +75,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [txRes, pkgRes] = await Promise.all([
+        const [txRes, pkgRes, profileRes] = await Promise.all([
           api.get('/store/transactions'),
-          api.get('/packages')
+          api.get('/packages'),
+          api.get('/users/profile') // Get fresh profile with sync balance
         ]);
         setTransactions(txRes.data);
+        setUserProfile(profileRes.data);
         
         // Map CoinPackage to StoreItem
         const mappedItems: StoreItem[] = pkgRes.data.map((pkg: any) => ({
@@ -87,13 +90,12 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           name: pkg.name,
           description: pkg.description || '',
           price: pkg.price,
-          currency: 'USD', // Still use USD internally to trigger VNĐ formatting in UI
+          currency: 'USD',
           badge: pkg.category === 'Coin' 
             ? `${(pkg.coinAmount + pkg.bonusCoin).toLocaleString('vi-VN')} Xu`
             : (pkg.bonusCoin > 0 ? `+${pkg.bonusCoin.toLocaleString('vi-VN')} Xu Thưởng` : undefined),
           icon: pkg.category === 'Coin' ? 'payments' : pkg.category === 'VIP' ? 'workspace_premium' : 'stars',
           type: pkg.category === 'Coin' ? 'Coins' : pkg.category === 'VIP' ? 'Rank' : 'BattlePass',
-          // New fields for details
           bonusCoin: pkg.bonusCoin,
           coinAmount: pkg.coinAmount,
           commands: pkg.commands || [],
@@ -110,7 +112,6 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     };
     fetchDashboardData();
   }, []);
-
 
   // States for Modals
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'refuse' } | null>(null);
@@ -132,6 +133,26 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     setTimeout(() => setNotification(null), 4000);
   };
 
+  // Requirement 5: Auto refresh balance helper
+  const refreshBalance = useCallback(async () => {
+    if (!userProfile.minecraftUsername) return;
+    try {
+      const res = await minecraftService.getPlayerBalance(userProfile.minecraftUsername);
+      setUserProfile(prev => ({ ...prev, balance: res.balance }));
+    } catch (err) {
+      console.warn('Failed to refresh balance.');
+    }
+  }, [userProfile.minecraftUsername]);
+
+  useEffect(() => {
+    if (activeTab === 'Trang chủ' || activeTab === 'Cửa hàng') {
+      refreshBalance();
+    }
+    
+    const interval = setInterval(refreshBalance, 30000); // 30s auto-refresh
+    return () => clearInterval(interval);
+  }, [activeTab, refreshBalance]);
+
   // Link Minecraft Account
   const handleLinkMinecraft = async () => {
     if (!minecraftInput.trim()) {
@@ -140,17 +161,20 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     }
     setIsLinking(true);
     try {
-      const checkRes = await api.get(`/minecraft/check-player/${minecraftInput.trim()}`);
-      if (checkRes.data.exists) {
-        await api.post('/users/link-minecraft', { minecraftUsername: minecraftInput.trim() });
+      // Requirement 1: Verify using new service (RCON check)
+      const verifyRes = await minecraftService.verifyPlayer(minecraftInput.trim());
+      if (verifyRes.exists) {
+        // Requirement 2: Link account (backend will check if already linked)
+        const linkRes = await minecraftService.linkAccount(verifyRes.realName);
         setUserProfile(prev => ({ 
           ...prev, 
-          minecraftUsername: minecraftInput.trim(), 
-          minecraftVerified: true 
+          minecraftUsername: verifyRes.realName, 
+          minecraftVerified: true,
+          balance: linkRes.balance
         }));
-        triggerNotification('Liên kết tài khoản Minecraft thành công!');
+        triggerNotification(`Đồng bộ thành công nhân vật: ${verifyRes.realName}`);
       } else {
-        triggerNotification('Không tìm thấy người chơi trên máy chủ.', 'refuse');
+        triggerNotification('Không tìm thấy nhân vật trên máy chủ.', 'refuse');
       }
     } catch (error: any) {
       triggerNotification(error.response?.data?.message || 'Lỗi khi liên kết tài khoản.', 'refuse');
@@ -186,16 +210,17 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
     try {
       setIsCheckingPlayer(true);
-      const response = await api.post('/minecraft/check-player', { playerName: playerNameInput.trim() });
-      if (response.data.exists) {
+      const res = await minecraftService.verifyPlayer(playerNameInput.trim());
+      if (res.exists) {
         setIsPlayerVerified(true);
-        triggerNotification('Xác thực người chơi thành công!');
+        setPlayerNameInput(res.realName); // Ensure correct casing
+        triggerNotification(`Xác thực thành công nhân vật: ${res.realName}`);
       } else {
         setIsPlayerVerified(false);
-        triggerNotification('Không tìm thấy người chơi trên server.', 'refuse');
+        triggerNotification('Không tìm thấy nhân vật trên server.', 'refuse');
       }
     } catch (error: any) {
-      triggerNotification(error.response?.data?.message || 'Lỗi khi kiểm tra người chơi.', 'refuse');
+      triggerNotification(error.response?.data?.message || 'Lỗi khi kiểm tra nhân vật.', 'refuse');
       setIsPlayerVerified(false);
     } finally {
       setIsCheckingPlayer(false);
@@ -210,17 +235,17 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     }
 
     try {
-      // Re-verify player before creating order as per requirement 7
-      const verifyRes = await api.post('/minecraft/verify-player', { username: playerNameInput.trim() });
-      if (!verifyRes.data.success) {
-        triggerNotification('Không tìm thấy người chơi trên máy chủ.', 'refuse');
+      // Re-verify player before creating order
+      const verifyRes = await minecraftService.verifyPlayer(playerNameInput.trim());
+      if (!verifyRes.exists) {
+        triggerNotification('Không tìm thấy nhân vật trên máy chủ.', 'refuse');
         return;
       }
 
-      const response = await paymentService.createPayment(selectedPackage.id || (selectedPackage as any)._id, playerNameInput.trim());
+      const response = await paymentService.createPayment(selectedPackage.id || (selectedPackage as any)._id, verifyRes.realName);
       navigate(`/payment/checkout/${response.transactionId}`);
     } catch (error: any) {
-      triggerNotification(error.response?.data?.message || 'Không tìm thấy người chơi trên máy chủ hoặc lỗi thanh toán.', 'refuse');
+      triggerNotification(error.response?.data?.message || 'Lỗi khi tạo giao dịch.', 'refuse');
     }
   };
 
@@ -1133,27 +1158,34 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                               </span>
                             </div>
                           ) : (
-                            <span className="block text-[10px] text-slate-400 font-medium mt-1">Bạn chưa liên kết tài khoản Minecraft.</span>
+                            <div className="space-y-2 mt-1">
+                              <span className="block text-[10px] text-slate-400 font-medium italic">
+                                * Vui lòng sử dụng đúng tên nhân vật trong game để nhận vật phẩm và đồng bộ số dư.
+                              </span>
+                              <span className="block text-[10px] text-slate-400 font-medium">Bạn chưa liên kết tài khoản Minecraft.</span>
+                            </div>
                           )}
                         </div>
                       </div>
 
                       {(!userProfile.minecraftUsername) && (
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            placeholder="Nhập Minecraft Username..."
-                            value={minecraftInput}
-                            onChange={e => setMinecraftInput(e.target.value)}
-                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button 
-                            onClick={handleLinkMinecraft}
-                            disabled={isLinking || !minecraftInput.trim()}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isLinking ? 'Đang kiểm tra...' : 'Liên kết'}
-                          </button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              placeholder="Nhập Minecraft Username..."
+                              value={minecraftInput}
+                              onChange={e => setMinecraftInput(e.target.value)}
+                              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <button 
+                              onClick={handleLinkMinecraft}
+                              disabled={isLinking || !minecraftInput.trim()}
+                              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                              {isLinking ? 'Đang kiểm tra...' : 'Liên kết'}
+                            </button>
+                          </div>
                         </div>
                       )}
 

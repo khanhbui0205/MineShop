@@ -17,6 +17,7 @@ export interface PaymentTransaction {
   transactionId?: string;
   payosOrderId?: string;
   playerName?: string;
+  minecraftUsername?: string;
   createdAt: string;
   paymentUrl?: string;
   qrCode?: string;

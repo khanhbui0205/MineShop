@@ -94,6 +94,7 @@ exports.createPayment = async (req, res) => {
       qrCode: paymentLinkRes.qrCode || '',
       status: 'pending',
       playerName: playerName,
+      minecraftUsername: req.user.minecraftUsername || playerName,
       accountNumber: paymentLinkRes.accountNumber,
       accountName: paymentLinkRes.accountName,
       description: paymentLinkRes.description || body.description, // Use the description returned by PayOS or fallback to body.description

@@ -3,6 +3,7 @@ const Transaction = require('../models/Transaction');
 const Package = require('../models/Package');
 const PaymentConfig = require('../models/PaymentConfig');
 const bcrypt = require('bcryptjs');
+const minecraftService = require('../services/minecraftService');
 
 // ─── DASHBOARD STATS ──────────────────────────────────────────────────────────
 
@@ -57,14 +58,28 @@ exports.getUsers = async (req, res) => {
         }
       : {};
 
-    const [users, total] = await Promise.all([
+    const [usersRaw, total] = await Promise.all([
       User.find(searchFilter)
         .select('-password')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(parseInt(limit))
+        .lean(),
       User.countDocuments(searchFilter),
     ]);
+
+    // Requirement 6: Sync balances for all users in the list
+    const users = await Promise.all(usersRaw.map(async (u) => {
+      if (u.minecraftUsername) {
+        try {
+          const gameBalance = await minecraftService.getPlayerBalance(u.minecraftUsername);
+          return { ...u, balance: gameBalance };
+        } catch (err) {
+          return u;
+        }
+      }
+      return u;
+    }));
 
     res.json({
       users,
@@ -82,8 +97,23 @@ exports.getUsers = async (req, res) => {
 // @access  Private/Admin
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).select('-password').lean();
     if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    
+    // Requirement 7: Show real-time balance and sync info
+    if (user.minecraftUsername) {
+      try {
+        const gameBalance = await minecraftService.getPlayerBalance(user.minecraftUsername);
+        user.balance = gameBalance;
+        
+        // Find cache if exists to show last sync
+        const cached = minecraftService.balanceCache.get(user.minecraftUsername);
+        user.minecraftLastSync = cached ? new Date(cached.timestamp) : new Date();
+      } catch (err) {
+        console.warn('Admin fetch balance error:', err.message);
+      }
+    }
+    
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
