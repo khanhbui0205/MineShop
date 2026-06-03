@@ -11,7 +11,7 @@ const rconService = require('./rconService');
  */
 async function processSuccessfulPayment(transaction) {
   // 1. Mark as completed in DB (Idempotency check)
-  if (transaction.status === 'completed' || transaction.status === 'paid') {
+  if (transaction.status === 'completed') {
     return false; 
   }
   

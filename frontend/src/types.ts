@@ -12,7 +12,7 @@ export interface Transaction {
   coinsChange: number;
   date?: string;
   createdAt?: string;
-  status: 'Completed' | 'Claimed' | 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired';
+  status: 'pending' | 'completed' | 'cancelled' | 'failed';
   playerName?: string;
   transactionId?: string;
   orderCode?: number;

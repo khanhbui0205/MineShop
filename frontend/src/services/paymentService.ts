@@ -12,7 +12,7 @@ export interface PaymentTransaction {
   orderCode: number;
   amount: number;
   coinsChange: number;
-  status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired';
+  status: 'pending' | 'completed' | 'cancelled' | 'failed';
   item: string;
   transactionId?: string;
   payosOrderId?: string;

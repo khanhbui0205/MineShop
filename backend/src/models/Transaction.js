@@ -42,7 +42,7 @@ const transactionSchema = new mongoose.Schema(
     qrCode: String,
     status: {
       type: String,
-      enum: ['pending', 'paid', 'failed', 'cancelled', 'expired', 'completed', 'claimed', 'Completed', 'Claimed'],
+      enum: ['pending', 'completed', 'cancelled', 'failed'],
       default: 'pending',
     },
     playerName: {
