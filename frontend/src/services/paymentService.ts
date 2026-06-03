@@ -53,6 +53,11 @@ const paymentService = {
     const response = await http.get(`/payment/${id}`);
     return response.data;
   },
+
+  checkPaymentStatus: async (orderCode: number): Promise<{ status: string, message: string }> => {
+    const response = await http.get(`/payment/check/${orderCode}`);
+    return response.data;
+  },
 };
 
 export default paymentService;

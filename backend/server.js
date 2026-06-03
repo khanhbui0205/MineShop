@@ -12,6 +12,10 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  
+  // Initialize Cron Jobs
+  const { initCronJobs } = require('./src/utils/cronJobs');
+  initCronJobs();
 });
 
 // Thêm đoạn log này ở file server.js

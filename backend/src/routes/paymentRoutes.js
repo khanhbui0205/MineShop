@@ -7,6 +7,7 @@ const {
   getPaymentHistory,
   getPaymentById,
   resumePayment,
+  checkPaymentStatus
 } = require('../controllers/paymentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -16,6 +17,7 @@ router.post('/webhook', handleWebhook);
 // Protected routes
 router.post('/create', protect, createPayment);
 router.get('/status/:orderCode', protect, getPaymentStatus);
+router.get('/check/:orderCode', protect, checkPaymentStatus);
 router.get('/history', protect, getPaymentHistory);
 router.get('/resume/:id', protect, resumePayment);
 router.get('/:id', protect, getPaymentById);
