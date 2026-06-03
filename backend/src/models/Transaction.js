@@ -47,7 +47,11 @@ const transactionSchema = new mongoose.Schema(
     },
     playerName: {
       type: String,
-      trim: true,
+      default: '',
+    },
+    minecraftUsername: {
+      type: String,
+      default: '',
     },
     accountNumber: String,
     accountName: String,

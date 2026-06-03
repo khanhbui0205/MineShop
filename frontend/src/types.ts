@@ -12,8 +12,9 @@ export interface Transaction {
   coinsChange: number;
   date?: string;
   createdAt?: string;
-  status: 'pending' | 'completed' | 'cancelled' | 'failed';
+  status: 'pending' | 'completed' | 'cancelled' | 'failed' | 'Completed' | 'Claimed';
   playerName?: string;
+  minecraftUsername?: string;
   transactionId?: string;
   orderCode?: number;
 }
@@ -29,6 +30,7 @@ export interface UserProfile {
   battlePassXp: number;
   minecraftUsername?: string;
   minecraftVerified?: boolean;
+  minecraftLastSync?: string;
   isBanned?: boolean;
   role?: string;
 }
@@ -86,6 +88,8 @@ export interface Player {
   totalDeposited?: number;
   balance?: number;
   role: string;
+  minecraftUsername?: string;
+  minecraftLastSync?: string;
   lastActive?: string;
   lastLoginAt?: string | null;
   createdAt?: string;

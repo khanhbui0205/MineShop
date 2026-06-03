@@ -13,12 +13,14 @@ import {
 
 import paymentService from '../../services/paymentService';
 import type { PaymentTransaction } from '../../services/paymentService';
+import minecraftService from '../../services/minecraftService';
 import { toast } from 'react-hot-toast';
 
 export default function CheckoutPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [transaction, setTransaction] = useState<PaymentTransaction | null>(null);
+  const [playerBalance, setPlayerBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number>(900); // Default 15 mins
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -30,6 +32,17 @@ export default function CheckoutPage() {
         if (!id) return;
         const data = await paymentService.getPaymentById(id);
         setTransaction(data);
+
+        // Fetch realtime balance
+        const mcUser = data.minecraftUsername || data.playerName;
+        if (mcUser) {
+          try {
+            const balRes = await minecraftService.getPlayerBalance(mcUser);
+            setPlayerBalance(balRes.balance);
+          } catch (balErr) {
+            console.warn('Could not fetch player balance');
+          }
+        }
         
         // Calculate remaining time
         const created = new Date(data.createdAt).getTime();
@@ -216,6 +229,26 @@ export default function CheckoutPage() {
                       <span className="text-sm font-bold text-slate-700">
                         {transaction.item}
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Player Info - Realtime */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Nhân vật</span>
+                      <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                        <span className="text-xs font-bold text-indigo-700">
+                          {transaction.minecraftUsername || transaction.playerName || '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Số dư hiện tại</span>
+                      <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                        <span className="text-xs font-bold text-emerald-700">
+                          {playerBalance !== null ? `${playerBalance.toLocaleString('vi-VN')} Xu` : 'Đang tải...'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
