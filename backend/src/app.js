@@ -60,30 +60,39 @@ app.use((req, res, next) => {
   next();
 });
 
-// Mount routers
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/store', storeRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/packages', packageRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/payos', paymentRoutes);
-app.use('/api/admin/server-control', serverControlRoutes);
-app.use('/api/minecraft', minecraftRoutes);
+// Create a main router for all API endpoints
+const apiRouter = express.Router();
 
-// Health check (old root)
-app.get('/', (req, res) => {
-  res.json({ message: 'MineShop API đang hoạt động', version: '2.0.0' });
-});
+// Mount all feature routers to the main apiRouter
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
+apiRouter.use('/store', storeRoutes);
+apiRouter.use('/admin/server-control', serverControlRoutes); // Move more specific one up if needed
+apiRouter.use('/admin', adminRoutes);
+apiRouter.use('/packages', packageRoutes);
+apiRouter.use('/payment', paymentRoutes);
+apiRouter.use('/payos', paymentRoutes);
+apiRouter.use('/minecraft', minecraftRoutes);
 
-// Health check API
-app.get('/api/health', (req, res) => {
+// Health check inside apiRouter
+apiRouter.get('/health', (req, res) => {
   res.json({
     success: true,
     status: "ok",
     environment: process.env.NODE_ENV || 'development'
   });
 });
+
+// Use the main apiRouter with and without /api prefix
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
+
+// Health check (old root)
+app.get('/', (req, res) => {
+  res.json({ message: 'MineShop API đang hoạt động', version: '2.0.0' });
+});
+
+
 
 // Error handler middleware
 app.use((err, req, res, next) => {
