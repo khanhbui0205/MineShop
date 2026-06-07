@@ -89,6 +89,7 @@ export interface Player {
   balance?: number;
   role: string;
   minecraftUsername?: string;
+  minecraftVerified?: boolean;
   minecraftLastSync?: string;
   lastActive?: string;
   lastLoginAt?: string | null;
@@ -133,6 +134,6 @@ export interface ServerCommand {
 }
 
 export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Lịch sử' | 'Cài đặt';
-export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Thanh toán' | 'Server Control' | 'Cài đặt';
+export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Server Control' | 'Cài đặt';
 export type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'ADMIN';
 

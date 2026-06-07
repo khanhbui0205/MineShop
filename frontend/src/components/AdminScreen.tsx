@@ -11,12 +11,14 @@ import {
   AlertCircle,
   CreditCard,
   Terminal,
+  TrendingUp,
 } from 'lucide-react';
 import type { AdminTab, CoinPackage, Player, AuditLog, AdminStats } from '../types';
 import DashboardAdmin from './DashboardAdmin';
 import UsersAdmin from './UsersAdmin';
 import PaymentAdmin from './PaymentAdmin';
 import ServerControlAdmin from './ServerControlAdmin';
+import RevenueAnalyticsAdmin from './RevenueAnalyticsAdmin';
 import api from '../lib/api';
 
 
@@ -236,6 +238,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
   const navItems: { label: AdminTab; icon: React.ReactNode }[] = [
     { label: 'Tổng quan', icon: <LayoutDashboard size={18} /> },
     { label: 'Người dùng', icon: <Users size={18} /> },
+    { label: 'Doanh thu', icon: <TrendingUp size={18} /> },
     { label: 'Thanh toán', icon: <CreditCard size={18} /> },
     { label: 'Server Control', icon: <Terminal size={18} /> },
     { label: 'Cài đặt', icon: <Settings size={18} /> },
@@ -423,6 +426,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
                     onUpdatePackage={handleUpdatePackage}
                     onDeletePackage={handleDeletePackage}
                     onTogglePackage={handleTogglePackage}
+                    onTabChange={setActiveTab}
                   />
                 </motion.div>
               )}
@@ -442,6 +446,19 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
                     onPlayersLoaded={handlePlayersLoaded}
                     addAuditLog={addAuditLog}
                   />
+                </motion.div>
+              )}
+
+              
+              {activeTab === 'Doanh thu' && (
+                <motion.div
+                  key="revenue"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <RevenueAnalyticsAdmin />
                 </motion.div>
               )}
 

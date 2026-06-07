@@ -8,13 +8,17 @@ exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).lean();
     if (user) {
-      // Sync balance from Minecraft Server if username is linked
+      // Sync balance & rank from Minecraft Server if username is linked
       if (user.minecraftUsername) {
         try {
-          const gameBalance = await minecraftService.getPlayerBalance(user.minecraftUsername);
-          user.balance = gameBalance; // Overwrite MongoDB balance for UI
+          const [gameBalance, gameRank] = await Promise.all([
+            minecraftService.getPlayerBalance(user.minecraftUsername),
+            minecraftService.getPlayerRank(user.minecraftUsername)
+          ]);
+          user.balance = gameBalance;
+          user.rank = gameRank; // Overwrite for real-time display
         } catch (err) {
-          console.warn('[PROFILE] Failed to fetch game balance:', err.message);
+          console.warn('[PROFILE] Failed to fetch game data:', err.message);
         }
       }
       res.json(user);
@@ -71,22 +75,35 @@ exports.linkMinecraft = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-    }
-
-    // Requirement 2: Prevents multiple changes if already linked
-    if (user.minecraftUsername && user.minecraftUsername !== '' && req.user.role !== 'admin') {
-      return res.status(400).json({ message: 'Tài khoản đã liên kết với nhân vật ' + user.minecraftUsername + '. Vui lòng liên hệ admin để thay đổi.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
 
     if (!minecraftUsername) {
-      return res.status(400).json({ message: 'Vui lòng cung cấp tên nhân vật' });
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên nhân vật' });
     }
 
-    // Requirement 1: Verify existence directly in server via RCON
+    // Requirement 2 & 3: Check if this username is already linked TO ANOTHER ACCOUNT
+    // Case-insensitive check
+    const existingUser = await User.findOne({ 
+      minecraftUsername: { $regex: new RegExp(`^${minecraftUsername}$`, 'i') } 
+    });
+
+    if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        error: "USERNAME_ALREADY_REGISTERED",
+        message: "Tên nhân vật này đã được liên kết với tài khoản khác."
+      });
+    }
+
+    // Requirement 4: Verify existence directly in server via RCON
     const verification = await minecraftService.verifyPlayerExists(minecraftUsername);
     if (!verification.exists) {
-      return res.status(404).json({ message: 'Tên nhân vật không tồn tại trong server.' });
+      return res.status(404).json({ 
+        success: false,
+        error: "PLAYER_NOT_FOUND",
+        message: 'Nhân vật không tồn tại trong server.' 
+      });
     }
 
     // Save with exact casing from server
@@ -94,16 +111,64 @@ exports.linkMinecraft = async (req, res) => {
     user.minecraftVerified = true;
     await user.save();
 
-    // Fetch initial balance
-    const balance = await minecraftService.getPlayerBalance(user.minecraftUsername);
+    // Fetch initial balance & rank
+    const [balance, rank] = await Promise.all([
+      minecraftService.getPlayerBalance(user.minecraftUsername),
+      minecraftService.getPlayerRank(user.minecraftUsername)
+    ]);
 
     res.json({ 
+      success: true,
       message: 'Liên kết tài khoản Minecraft thành công', 
       minecraftUsername: user.minecraftUsername,
       minecraftVerified: user.minecraftVerified,
-      balance
+      balance,
+      rank
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "USERNAME_ALREADY_REGISTERED",
+        message: 'Tên nhân vật này đã được liên kết với tài khoản khác.' 
+      });
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Change user password
+// @route   PUT /api/users/change-password
+// @access  Private
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 8 ký tự' });
+    }
+
+    if (!/\d/.test(newPassword)) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải chứa ít nhất một chữ số' });
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không chính xác' });
+    }
+
+    // Update password (pre-save hook will hash it)
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ success: true, message: 'Đổi mật khẩu thành công' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

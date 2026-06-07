@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, admin } = require('../middleware/authMiddleware');
 const {
   getStats,
+  getRevenueAnalytics,
   getUsers,
   getUserById,
   getUserTransactions,
@@ -26,6 +27,7 @@ router.use(protect, admin);
 
 // ─── Stats ─────────────────────────────
 router.get('/stats', getStats);
+router.get('/stats/revenue', getRevenueAnalytics);
 router.get('/stats/transactions', getAllTransactions);
 
 // ─── User Management ───────────────────
