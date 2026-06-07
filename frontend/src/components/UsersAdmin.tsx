@@ -76,6 +76,7 @@ export default function UsersAdmin({
         donated: u.totalDeposited || 0,
         balance: u.balance || 0,
         minecraftUsername: u.minecraftUsername || '',
+        minecraftVerified: u.minecraftVerified || false,
         minecraftLastSync: u.minecraftLastSync,
         role: u.role,
         lastActive: u.lastLoginAt
@@ -255,9 +256,16 @@ export default function UsersAdmin({
                                 ID: {player.id.substring(0, 12)}...
                               </p>
                               {player.minecraftUsername && (
-                                <p className="text-[10px] text-indigo-400 font-bold mt-0.5">
-                                  MC: {player.minecraftUsername}
-                                </p>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <p className="text-[10px] text-indigo-400 font-bold">
+                                    MC: {player.minecraftUsername}
+                                  </p>
+                                  {player.minecraftVerified ? (
+                                    <span className="text-[9px] bg-emerald-900/40 text-emerald-400 px-1.5 py-0.5 rounded font-bold">VERIFIED</span>
+                                  ) : (
+                                    <span className="text-[9px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded font-bold">⚠ UNVERIFIED</span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -427,6 +435,12 @@ export default function UsersAdmin({
                 {[
                   { label: 'Số dư (Server)', value: `${(selectedPlayer.balance || 0).toLocaleString('vi-VN')} Xu` },
                   { label: 'MC Username', value: selectedPlayer.minecraftUsername || '—' },
+                  { 
+                    label: 'MC Verified', 
+                    value: selectedPlayer.minecraftUsername 
+                      ? (selectedPlayer.minecraftVerified ? '✅ Đã xác minh' : '⚠️ Chưa xác minh') 
+                      : '— Chưa liên kết' 
+                  },
                   { label: 'Tổng nạp', value: formatVND(selectedPlayer.donated) },
                   { label: 'Hạng', value: selectedPlayer.rank },
                   { label: 'Vai trò', value: selectedPlayer.role === 'admin' ? 'Admin' : 'Thành viên' },

@@ -3,7 +3,7 @@ const rconService = require('./rconService');
 class MinecraftService {
   constructor() {
     this.balanceCache = new Map(); // username -> { balance, timestamp }
-    this.CACHE_DURATION = 30 * 1000; // 30 seconds
+    this.CACHE_DURATION = 10 * 1000; // 10 seconds
   }
 
   /**
@@ -12,33 +12,56 @@ class MinecraftService {
    * @returns {Promise<{exists: boolean, realName: string}>}
    */
   async verifyPlayerExists(username) {
+    if (!username) return { exists: false, realName: '' };
+    
+    console.log(`[MINECRAFT SERVICE] Player verification request: ${username}`);
+    
     try {
       // Use EssentialsX 'seen' command as it's reliable for offline players too
+      // We use 'essentials:seen' to ensure we call the specific plugin command
       const response = await rconService.sendCommand(`essentials:seen ${username}`);
       
-      // If response contains "not found", they don't exist
-      if (response.toLowerCase().includes('not found') || response.toLowerCase().includes('never seen')) {
+      // Detailed check for failure
+      // Common failure messages: "Player not found", "never seen", "Usage:", "Command Help"
+      const lowerResponse = response.toLowerCase();
+      const isNotFound = lowerResponse.includes('not found') || 
+                         lowerResponse.includes('never seen') || 
+                         lowerResponse.includes('không tìm thấy') ||
+                         lowerResponse.includes('không tìm thấy') ||
+                         lowerResponse.includes('error:') ||
+                         lowerResponse.includes('command help') ||
+                         lowerResponse.includes('usage:');
+
+      if (isNotFound) {
+        console.log(`[MINECRAFT SERVICE] Verification result for ${username}: false (Response: ${response.trim()})`);
         return { exists: false, realName: '' };
       }
 
-      // Try to extract exact name if possible, otherwise return input
-      // Essentials often returns "Player: Name" or similar
+      // Try to extract exact name if possible
+      // Essentials often returns "Player: Name" or "Name - Offline"
       const lines = response.split('\n');
       let realName = username;
       
-      // Some 'seen' outputs: "Slayer - Offline" or "Player: Slayer"
-      if (lines[0] && lines[0].includes('-')) {
-        realName = lines[0].split('-')[0].trim();
-      } else if (lines[0] && lines[0].includes(':')) {
-          realName = lines[0].split(':')[1].trim();
+      // Clean up the response to get just the name if it's there
+      // Example: "§6Slayer §f- §7Offline§f"
+      const cleanLine = lines[0].replace(/§[0-9a-fk-or]/g, '').trim();
+      
+      if (cleanLine.includes('-')) {
+        realName = cleanLine.split('-')[0].trim();
+      } else if (cleanLine.includes(':')) {
+        realName = cleanLine.split(':')[1].trim();
+      } else if (cleanLine.length > 0) {
+        // If it's just one word or something sensible, it might be the name
+        const firstWord = cleanLine.split(' ')[0];
+        if (firstWord.toLowerCase() === username.toLowerCase()) {
+          realName = firstWord;
+        }
       }
 
-      // Check if the response actually looks like a success
-      // If it's just repeating the command or generic error, we might need a better check
+      console.log(`[MINECRAFT SERVICE] Verification result for ${username}: true (Real Name: ${realName})`);
       return { exists: true, realName };
     } catch (error) {
       console.error('[MINECRAFT SERVICE] Verify Player Error:', error.message);
-      // Fallback: if RCON is down, we might want to warn
       throw new Error('Không thể kết nối đến Minecraft Server để xác minh nhân vật');
     }
   }
@@ -54,21 +77,75 @@ class MinecraftService {
     // Check cache
     const cached = this.balanceCache.get(username);
     if (cached && (Date.now() - cached.timestamp < this.CACHE_DURATION)) {
-      console.log(`[MINECRAFT SERVICE] Returning cached balance for ${username}: ${cached.balance}`);
       return cached.balance;
     }
 
     try {
-      // Common economy command: /eco balance <user>
-      const response = await rconService.sendCommand(`eco balance ${username}`);
-      console.log(`[MINECRAFT SERVICE] Balance response for ${username}:`, response);
+      // Use 'bal' instead of 'eco balance' which is more standard for viewing
+      // Prefix with 'essentials:' to be safe
+      const command = `essentials:bal ${username}`;
+      console.log(`[MINECRAFT SERVICE] Balance command: ${command}`);
+      
+      const response = await rconService.sendCommand(command);
+      console.log(`[MINECRAFT SERVICE] Balance response for ${username}: ${response.trim()}`);
+
+      // Check if response is help page or error
+      const lowerRes = response.toLowerCase();
+      if (lowerRes.includes('help') || lowerRes.includes('usage') || lowerRes.includes('error') || lowerRes.includes('not found')) {
+        console.warn(`[MINECRAFT SERVICE] Balance command failed or returned Help/Error for ${username}: ${response.trim()}`);
+        // If it explicitly says "not found", we throw a specific error that the controller can catch
+        if (lowerRes.includes('not found')) {
+          throw new Error('PLAYER_NOT_FOUND');
+        }
+        return cached ? cached.balance : 0;
+      }
 
       // Example response: "Balance: $1,250.00" or "kingxu2004 has 1,250.00$"
-      // Remove symbols and commas, extract numbers
-      const cleaned = response.replace(/[$,]/g, '');
-      const match = cleaned.match(/(\d+(\.\d+)?)/);
+      // Requirement: Avoid picking numbers from the username itself (e.g. kingxu2004)
+      let cleaned = response.replace(/§[0-9a-fk-or]/g, '');
+      
+      const lowerUsername = username.toLowerCase();
+      const lowerCleaned = cleaned.toLowerCase();
+      
+      // If the response contains the username, remove it to prevent numeric parts of the name (like '2004') from being parsed as balance
+      const nameIndex = lowerCleaned.indexOf(lowerUsername);
+      if (nameIndex !== -1) {
+          cleaned = cleaned.substring(0, nameIndex) + cleaned.substring(nameIndex + username.length);
+      }
+
+      // Remove thousands separators (commas or periods followed by 3 digits)
+      // If the string is "1.250,50" -> we assume , is decimal if it's the last separator
+      // Common Essentials format is "$1,250.00"
+      
+      let finalClean = cleaned.replace(/[$]/g, '').trim();
+      
+      // If it contains both , and . (e.g. 1,250.00 or 1.250,00)
+      if (finalClean.includes(',') && finalClean.includes('.')) {
+          const lastComma = finalClean.lastIndexOf(',');
+          const lastDot = finalClean.lastIndexOf('.');
+          if (lastComma > lastDot) {
+              // European: 1.250,00 -> remove dots, replace comma with dot
+              finalClean = finalClean.replace(/\./g, '').replace(',', '.');
+          } else {
+              // US: 1,250.00 -> remove commas
+              finalClean = finalClean.replace(/,/g, '');
+          }
+      } else if (finalClean.includes(',')) {
+          // Only commas. If it's like 1,250 -> could be 1250 or 1.25. 
+          // Usually in MC it's a thousands separator if followed by 3 digits.
+          if (finalClean.match(/,\d{3}/)) {
+              finalClean = finalClean.replace(/,/g, '');
+          } else {
+              // Otherwise treat as decimal
+              finalClean = finalClean.replace(',', '.');
+          }
+      }
+      
+      // Look for the first number (handles negative values and decimals)
+      const match = finalClean.match(/-?\d+(\.\d+)?/);
       
       const balance = match ? parseFloat(match[0]) : 0;
+      console.log(`[MINECRAFT SERVICE] Parsed balance for ${username}: ${balance} (Raw response minus name: ${finalClean.trim()})`);
 
       // Update cache
       this.balanceCache.set(username, {
@@ -79,8 +156,58 @@ class MinecraftService {
       return balance;
     } catch (error) {
       console.error('[MINECRAFT SERVICE] Get Balance Error:', error.message);
-      // If error, return cached if exists, else 0
+      // Propagate critical "not found" error so controller can fail the request
+      if (error.message === 'PLAYER_NOT_FOUND') {
+        throw error;
+      }
       return cached ? cached.balance : 0;
+    }
+  }
+
+  /**
+   * Get player's primary group (rank) from LuckPerms
+   * @param {string} username 
+   * @returns {Promise<string>}
+   */
+  async getPlayerRank(username) {
+    if (!username) return 'Member';
+
+    const CACHE_KEY = `rank_${username}`;
+    const cached = this.balanceCache.get(CACHE_KEY);
+    if (cached && (Date.now() - cached.timestamp < 60 * 1000)) {
+      return cached.rank;
+    }
+
+    try {
+      const command = `lp user ${username} info`;
+      console.log(`[MINECRAFT SERVICE] Rank command: ${command}`);
+      
+      const response = await rconService.sendCommand(command);
+      const lines = response.split('\n');
+      let rank = 'Member';
+      
+      for (const line of lines) {
+          const cleanLine = line.replace(/§[0-9a-fk-or]/g, '').trim();
+          if (cleanLine.toLowerCase().includes('primary group:')) {
+              rank = cleanLine.split(':')[1].trim();
+              break;
+          }
+      }
+      
+      // Simple formatting: member -> Member
+      rank = rank.charAt(0).toUpperCase() + rank.slice(1);
+      
+      console.log(`[MINECRAFT SERVICE] Parsed rank for ${username}: ${rank}`);
+
+      this.balanceCache.set(CACHE_KEY, {
+        rank,
+        timestamp: Date.now()
+      });
+
+      return rank;
+    } catch (error) {
+      console.error('[MINECRAFT SERVICE] Get Rank Error:', error.message);
+      return 'Member';
     }
   }
 

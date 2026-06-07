@@ -27,11 +27,59 @@ const getPayOSInstance = async () => {
 // @access  Private
 exports.createPayment = async (req, res) => {
   try {
-    const { packageId, playerName } = req.body;
+    let { packageId, playerName } = req.body;
+    
+    // Requirement 7: If user has linked minecraft account, force use it
+    if (req.user.minecraftUsername && req.user.minecraftUsername !== '') {
+      playerName = req.user.minecraftUsername;
+    }
     
     if (!playerName) {
-      return res.status(400).json({ message: 'Vui lòng nhập tên người chơi Minecraft' });
+      return res.status(400).json({ message: 'Vui lòng liên kết tài khoản Minecraft trước khi thanh toán' });
     }
+
+    // ── STEP 0: MANDATORY Player Verification via RCON ─────────────────────────
+    // Player MUST have joined the server at least once. 
+    console.log(`[PAYMENT] Payment Create Request: Player=${playerName}, Package=${packageId}`);
+    try {
+      const minecraftService = require('../services/minecraftService');
+      const verification = await minecraftService.verifyPlayerExists(playerName);
+      
+      if (!verification.exists) {
+        console.log(`[PAYMENT] Payment Create Reject: ${playerName} (Reason: NOT_FOUND in search)`);
+        return res.status(400).json({
+          success: false,
+          error: 'PLAYER_NOT_FOUND',
+          message: 'Nhân vật không tồn tại trên server. Bạn phải tham gia server ít nhất một lần.'
+        });
+      }
+
+      // Cross-check with balance to ensure absolute existence
+      try {
+        await minecraftService.getPlayerBalance(verification.realName);
+      } catch (err) {
+        if (err.message === 'PLAYER_NOT_FOUND') {
+          console.log(`[PAYMENT] Payment Create Reject: ${verification.realName} (Reason: NOT_FOUND in balance check)`);
+          return res.status(400).json({
+            success: false,
+            error: 'PLAYER_NOT_FOUND',
+            message: 'Nhân vật không tồn tại trên hệ thống server.'
+          });
+        }
+      }
+
+      // Use exact casing from server response
+      playerName = verification.realName || playerName;
+      console.log(`[PAYMENT] Payment Create Verification Passed: ${playerName}`);
+    } catch (verifyErr) {
+      console.error('[PAYMENT] RCON verification error:', verifyErr.message);
+      return res.status(500).json({
+        success: false,
+        error: 'RCON_ERROR',
+        message: 'Không thể kết nối với server Minecraft để xác minh nhân vật.'
+      });
+    }
+    // ───────────────────────────────────────────────────────────────────────────
 
     const pkg = await Package.findById(packageId);
     if (!pkg) {

@@ -26,6 +26,8 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
   const [errorMessage, setErrorMessage] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   // Password validation requirements
   const hasMinLength = password.length >= 8;
@@ -40,7 +42,42 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
     hasUppercase && 
     isPhoneValid &&
     password === confirmPassword && 
-    agreeTerms;
+    agreeTerms &&
+    isVerified;
+
+  const handleVerifyMinecraft = async () => {
+    if (username.trim().length < 3) {
+      setErrorMessage('Tên người dùng quá ngắn');
+      return;
+    }
+    setErrorMessage('');
+    setIsChecking(true);
+    try {
+      // Use the public check-player endpoint
+      const response = await api.post('/minecraft/check-player', { playerName: username.trim() });
+      if (response.data.success && response.data.playerExists) {
+        // Requirement 2: Check if already registered
+        if (response.data.isRegistered) {
+          setIsVerified(false);
+          setErrorMessage("Tên nhân vật này đã được đăng ký cho một tài khoản khác.");
+          return;
+        }
+
+        setIsVerified(true);
+        setUsername(response.data.username); // Normalize casing
+        setSuccessMsg(`Xác minh thành công nhân vật: ${response.data.username}`);
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } else {
+        setIsVerified(false);
+        setErrorMessage(response.data.message || 'Nhân vật không tồn tại trên server.');
+      }
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || 'Không tìm thấy nhân vật này trên server. Bạn phải tham gia server ít nhất 1 lần.');
+      setIsVerified(false);
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,23 +154,50 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               
               {/* Username Input */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-username">
-                  Tên người dùng (Minecraft)
-                </label>
-                <div className="relative group">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
-                    <User className="w-4 h-4" />
-                  </span>
-                  <input 
-                    id="reg-username"
-                    required
-                    type="text"
-                    placeholder="Steve"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
-                  />
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-username">
+                    Tên người dùng (Minecraft)
+                  </label>
+                  {isVerified && (
+                    <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Đã xác minh
+                    </span>
+                  )}
                 </div>
+                <div className="flex gap-2">
+                  <div className="relative group flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
+                      <User className="w-4 h-4" />
+                    </span>
+                    <input 
+                      id="reg-username"
+                      required
+                      type="text"
+                      placeholder="Steve"
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setIsVerified(false);
+                      }}
+                      className={`w-full bg-slate-50 border ${isVerified ? 'border-emerald-500' : 'border-slate-200'} rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyMinecraft}
+                    disabled={isChecking || username.trim().length < 3 || isVerified}
+                    className={`px-4 rounded-lg font-bold text-xs uppercase transition-all flex items-center justify-center min-w-[100px] ${
+                      isVerified 
+                      ? 'bg-emerald-100 text-emerald-700 cursor-default' 
+                      : 'bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer'
+                    }`}
+                  >
+                    {isChecking ? <RefreshCw className="w-4 h-4 animate-spin" /> : isVerified ? 'Đã Check' : 'Kiểm tra'}
+                  </button>
+                </div>
+                {!isVerified && !isChecking && (
+                  <p className="text-[10px] text-slate-400 italic">* Phải nhập đúng tên trong game và bấm Kiểm tra để tiếp tục.</p>
+                )}
               </div>
 
               {/* Email Input */}

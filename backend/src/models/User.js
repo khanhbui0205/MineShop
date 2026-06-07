@@ -73,7 +73,12 @@ const userSchema = new mongoose.Schema(
     },
     minecraftUsername: {
       type: String,
-      default: '',
+      default: null,
+      index: {
+        unique: true,
+        partialFilterExpression: { minecraftUsername: { $type: 'string', $gt: '' } },
+      },
+      trim: true,
     },
     minecraftVerified: {
       type: Boolean,

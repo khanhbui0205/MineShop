@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { 
-  CreditCard, 
-  Search, 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
-  RefreshCw, 
-  Save, 
-  Key, 
+import {
+  CreditCard,
+  Search,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  RefreshCw,
+  Save,
+  Key,
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
@@ -19,6 +19,7 @@ interface PaymentConfig {
   clientId: string;
   apiKey: string;
   checksumKey: string;
+  webhookUrl?: string;
 }
 
 export default function PaymentAdmin() {
@@ -52,10 +53,11 @@ export default function PaymentAdmin() {
   const fetchTransactions = async () => {
     setLoadingTxs(true);
     try {
-      const { data } = await api.get('/admin/stats/transactions'); // We'll need to implement this
-      setTransactions(data);
+      const { data } = await api.get('/admin/stats/transactions');
+      setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
     } catch (error) {
       toast.error('Không thể tải lịch sử giao dịch');
+      setTransactions([]);
     } finally {
       setLoadingTxs(false);
     }
@@ -119,17 +121,15 @@ export default function PaymentAdmin() {
       <div className="flex gap-4 p-1 bg-white/5 border border-white/10 rounded-xl w-fit">
         <button
           onClick={() => setActiveSubTab('transactions')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-            activeSubTab === 'transactions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeSubTab === 'transactions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+            }`}
         >
           Lịch sử giao dịch
         </button>
         <button
           onClick={() => setActiveSubTab('config')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-            activeSubTab === 'config' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeSubTab === 'config' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+            }`}
         >
           Cấu hình PayOS
         </button>
@@ -142,17 +142,17 @@ export default function PaymentAdmin() {
               <CreditCard className="text-indigo-400" size={20} />
               <h3 className="font-bold text-white uppercase tracking-wider text-sm">Giao dịch toàn hệ thống</h3>
             </div>
-            
+
             <div className="flex gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                <input 
-                  type="text" 
-                  placeholder="Tìm giao dịch..." 
+                <input
+                  type="text"
+                  placeholder="Tìm giao dịch..."
                   className="bg-white/5 border border-white/10 rounded-lg py-1.5 pl-9 pr-4 text-xs focus:ring-1 focus:ring-indigo-500 outline-none w-64"
                 />
               </div>
-              <button 
+              <button
                 onClick={fetchTransactions}
                 className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
               >
@@ -194,11 +194,11 @@ export default function PaymentAdmin() {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
-                            {tx.userId?.username?.[0]?.toUpperCase()}
+                            {tx.user?.username?.[0]?.toUpperCase() || '?'}
                           </div>
                           <div>
-                            <p className="font-bold text-white">{tx.userId?.username}</p>
-                            <p className="text-[10px] text-slate-500">{tx.userId?.email}</p>
+                            <p className="font-bold text-white">{tx.user?.username || 'Khách'}</p>
+                            <p className="text-[10px] text-slate-500">{tx.user?.email || 'N/A'}</p>
                           </div>
                         </div>
                       </td>
@@ -238,10 +238,10 @@ export default function PaymentAdmin() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">CLIENT ID</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={config.clientId}
-                  onChange={(e) => setConfig({...config, clientId: e.target.value})}
+                  onChange={(e) => setConfig({ ...config, clientId: e.target.value })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono"
                   placeholder="Nhập Client ID..."
                   autoComplete="off"
@@ -249,35 +249,35 @@ export default function PaymentAdmin() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">API KEY</label>
-                <input 
-                   type="password" 
-                   value={config.apiKey}
-                   onChange={(e) => setConfig({...config, apiKey: e.target.value})}
-                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono"
-                   placeholder="Nhập API Key..."
-                   autoComplete="off"
+                <input
+                  type="password"
+                  value={config.apiKey}
+                  onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono"
+                  placeholder="Nhập API Key..."
+                  autoComplete="off"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">CHECKSUM KEY</label>
-                <input 
-                   type="password" 
-                   value={config.checksumKey}
-                   onChange={(e) => setConfig({...config, checksumKey: e.target.value})}
-                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono"
-                   placeholder="Nhập Checksum Key..."
-                   autoComplete="off"
+                <input
+                  type="password"
+                  value={config.checksumKey}
+                  onChange={(e) => setConfig({ ...config, checksumKey: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono"
+                  placeholder="Nhập Checksum Key..."
+                  autoComplete="off"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">WEBHOOK URL</label>
-                <input 
-                   type="text" 
-                   value={(config as any).webhookUrl || ''}
-                   onChange={(e) => setConfig({...config, webhookUrl: e.target.value} as any)}
-                   className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono text-indigo-400"
-                   placeholder="https://your-domain.com/api/payment/webhook"
-                   autoComplete="off"
+                <input
+                  type="text"
+                  value={config.webhookUrl || ''}
+                  onChange={(e) => setConfig({ ...config, webhookUrl: e.target.value })}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-700 font-mono text-indigo-400"
+                  placeholder="https://your-domain.com/api/payment/webhook"
+                  autoComplete="off"
                 />
                 <p className="text-[10px] text-slate-500 mt-1 pl-1">URL này dùng để nhận thông báo thanh toán thành công tự động.</p>
               </div>
@@ -292,7 +292,7 @@ export default function PaymentAdmin() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button 
+              <button
                 type="submit"
                 disabled={saving}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2 disabled:opacity-50"
@@ -300,7 +300,7 @@ export default function PaymentAdmin() {
                 {saving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
                 LƯU CẤU HÌNH
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={handleTestConfig}
                 disabled={testing}
@@ -317,7 +317,7 @@ export default function PaymentAdmin() {
             <div>
               <p className="text-sm font-bold text-rose-200 mb-1">Cảnh báo Webhook</p>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Sau khi cấu hình, hãy đảm bảo bạn đã điền đúng URL Webhook trong trang quản trị PayOS của bạn: 
+                Sau khi cấu hình, hãy đảm bảo bạn đã điền đúng URL Webhook trong trang quản trị PayOS của bạn:
                 <span className="font-mono text-indigo-400 ml-1">https://your-domain.com/api/payment/webhook</span>
               </p>
             </div>

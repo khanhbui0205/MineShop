@@ -19,10 +19,10 @@ exports.getStats = async (req, res) => {
       Package.countDocuments(),
     ]);
 
-    // Tổng doanh thu
+    // Tổng doanh thu (Chỉ tính các giao dịch completed)
     const revenueResult = await Transaction.aggregate([
-      { $match: { type: 'Deposit' } },
-      { $group: { _id: null, total: { $sum: '$coinsChange' } } },
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const totalRevenue = revenueResult[0]?.total || 0;
 
@@ -32,6 +32,211 @@ exports.getStats = async (req, res) => {
       totalRevenue,
       totalTransactions,
       totalPackages: packages,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get detailed revenue analytics
+// @route   GET /api/admin/stats/revenue
+// @access  Private/Admin
+exports.getRevenueAnalytics = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    // 1. Revenue & Order Summaries
+    const revenueStats = await Transaction.aggregate([
+      {
+        $facet: {
+          summaries: [
+            { $match: { status: 'completed' } },
+            {
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: '$amount' },
+                successfulOrders: { $sum: 1 },
+                uniqueCustomers: { $addToSet: '$user' },
+                today: {
+                  $sum: { $cond: [{ $gte: ['$createdAt', startOfToday] }, '$amount', 0] }
+                },
+                week: {
+                  $sum: { $cond: [{ $gte: ['$createdAt', startOfWeek] }, '$amount', 0] }
+                },
+                month: {
+                  $sum: { $cond: [{ $gte: ['$createdAt', startOfMonth] }, '$amount', 0] }
+                },
+                year: {
+                  $sum: { $cond: [{ $gte: ['$createdAt', startOfYear] }, '$amount', 0] }
+                }
+              }
+            },
+            {
+              $project: {
+                totalRevenue: 1,
+                successfulOrders: 1,
+                uniqueCustomersCount: { $size: '$uniqueCustomers' },
+                averageOrderValue: {
+                  $cond: [
+                    { $eq: ['$successfulOrders', 0] },
+                    0,
+                    { $divide: ['$totalRevenue', '$successfulOrders'] }
+                  ]
+                },
+                today: 1,
+                week: 1,
+                month: 1,
+                year: 1
+              }
+            }
+          ],
+          allStatusCounts: [
+            {
+              $group: {
+                _id: '$status',
+                count: { $sum: 1 }
+              }
+            }
+          ]
+        }
+      }
+    ]);
+
+    const summaries = revenueStats[0].summaries[0] || {
+      totalRevenue: 0,
+      successfulOrders: 0,
+      uniqueCustomersCount: 0,
+      averageOrderValue: 0,
+      today: 0,
+      week: 0,
+      month: 0,
+      year: 0
+    };
+
+    const statusCounts = revenueStats[0].allStatusCounts.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+
+    const totalOrders = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+    // 2. Charts Data
+    // 7 Days Chart (by Day)
+    const sevenDaysChart = await Transaction.aggregate([
+      { $match: { status: 'completed', createdAt: { $gte: startOfWeek } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%d/%m', date: '$createdAt' } },
+          revenue: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+
+    // 30 Days Chart
+    const startOf30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysChart = await Transaction.aggregate([
+      { $match: { status: 'completed', createdAt: { $gte: startOf30Days } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%d/%m', date: '$createdAt' } },
+          revenue: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+
+    // 12 Months Chart
+    const startOf12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const twelveMonthsChart = await Transaction.aggregate([
+      { $match: { status: 'completed', createdAt: { $gte: startOf12Months } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%m/%Y', date: '$createdAt' } },
+          revenue: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+
+    // 5. Top Packages
+    const topPackages = await Transaction.aggregate([
+      { $match: { status: 'completed', package: { $exists: true } } },
+      {
+        $group: {
+          _id: '$package',
+          packageName: { $first: '$item' },
+          soldCount: { $sum: 1 },
+          revenue: { $sum: '$amount' }
+        }
+      },
+      { $sort: { soldCount: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // 6. Top Buyers
+    const topBuyers = await Transaction.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: '$user',
+          minecraftUsername: { $first: '$minecraftUsername' },
+          orderCount: { $sum: 1 },
+          totalSpent: { $sum: '$amount' }
+        }
+      },
+      { $sort: { totalSpent: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          minecraftUsername: 1,
+          orderCount: 1,
+          totalSpent: 1,
+          username: { $arrayElemAt: ['$userInfo.username', 0] }
+        }
+      }
+    ]);
+
+    res.json({
+      revenue: {
+        total: summaries.totalRevenue,
+        today: summaries.today,
+        week: summaries.week,
+        month: summaries.month,
+        year: summaries.year,
+        averageOrderValue: summaries.averageOrderValue,
+        uniqueCustomers: summaries.uniqueCustomersCount
+      },
+      orders: {
+        total: totalOrders,
+        successful: summaries.successfulOrders,
+        pending: statusCounts['pending'] || 0,
+        cancelled: statusCounts['cancelled'] || 0,
+        failed: statusCounts['failed'] || 0
+      },
+      charts: {
+        sevenDays: sevenDaysChart,
+        thirtyDays: thirtyDaysChart,
+        twelveMonths: twelveMonthsChart
+      },
+      topPackages,
+      topBuyers
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -482,26 +687,63 @@ exports.testPaymentConfig = async (req, res) => {
     // Or just check if the instance is created correctly (SDK doesn't have a simple ping)
     // Actually, createPaymentLink with invalid data would test API Key
     res.json({ status: 'OK', message: 'Kết nối tới PayOS thành công!' });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get all transactions (all users)
+// @desc    Get all transactions (with search, filter & pagination)
 // @route   GET /api/admin/stats/transactions
 // @access  Private/Admin
 exports.getAllTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find()
-      .populate('user', 'username email')
-      .sort({ createdAt: -1 })
-      .limit(100);
-    res.json(transactions);
+    const { search = '', status = '', page = 1, limit = 15, sortBy = 'createdAt', sortOrder = -1 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    let query = {};
+    
+    // Status filter
+    if (status) query.status = status;
+
+    // Search filter (Order ID, Username, Minecraft Username)
+    if (search) {
+      query.$or = [
+        { item: { $regex: search, $options: 'i' } },
+        { minecraftUsername: { $regex: search, $options: 'i' } }
+      ];
+      
+      // If search is numeric, try orderCode
+      if (!isNaN(search)) {
+        const numSearch = parseInt(search);
+        if (numSearch > 0) {
+          query.$or.push({ orderCode: numSearch });
+        }
+      }
+    }
+
+    const sortOptions = {};
+    sortOptions[sortBy] = parseInt(sortOrder);
+
+    const [transactions, total] = await Promise.all([
+      Transaction.find(query)
+        .populate('user', 'username email')
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Transaction.countDocuments(query),
+    ]);
+
+    res.json({
+      transactions,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 const rconService = require('../services/rconService');
 
 // @desc    Test RCON connection

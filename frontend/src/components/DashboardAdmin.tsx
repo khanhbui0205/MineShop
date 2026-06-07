@@ -15,11 +15,12 @@ interface DashboardAdminProps {
   onUpdatePackage: (pkg: CoinPackage) => void;
   onDeletePackage: (id: string) => void;
   onTogglePackage: (id: string) => void;
+  onTabChange: (tab: 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Server Control' | 'Cài đặt') => void;
 }
 
 export default function DashboardAdmin({
   stats, packages, auditLogs,
-  onAddPackage, onUpdatePackage, onDeletePackage, onTogglePackage,
+  onAddPackage, onUpdatePackage, onDeletePackage, onTogglePackage, onTabChange
 }: DashboardAdminProps) {
   const [activeTab, setActiveTab] = useState<'Coin' | 'VIP' | 'Pass'>('Coin');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -86,7 +87,13 @@ export default function DashboardAdmin({
           <motion.div
             key={label}
             whileHover={{ y: -3 }}
-            className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden"
+            onClick={() => {
+              if (label === 'Tổng doanh thu') onTabChange('Doanh thu');
+              if (label === 'Tổng người dùng') onTabChange('Người dùng');
+            }}
+            className={`bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden transition-all ${
+              (label === 'Tổng doanh thu' || label === 'Tổng người dùng') ? 'cursor-pointer hover:bg-white/10 hover:border-white/20 active:scale-95' : ''
+            }`}
           >
             <div className={`${color}`}>{icon}</div>
             <div>
