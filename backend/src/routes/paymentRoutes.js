@@ -13,6 +13,12 @@ const { protect } = require('../middleware/authMiddleware');
 
 // Public Webhook (PayOS calls this)
 router.post('/webhook', handleWebhook);
+router.get('/webhook', (req, res) => {
+  res.json({
+    success: true,
+    message: 'PayOS webhook endpoint is online. Use POST for payment notifications.',
+  });
+});
 
 // Protected routes
 router.post('/create', protect, createPayment);

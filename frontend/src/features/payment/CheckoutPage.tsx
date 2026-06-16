@@ -73,22 +73,28 @@ export default function CheckoutPage() {
 
   // Auto check status every 3 seconds (backend actively queries PayOS)
   useEffect(() => {
-    if (!transaction || String(transaction.status).toLowerCase() !== 'pending' || timeLeft <= 0) return;
+    if (!transaction || String(transaction.status).toLowerCase() !== 'pending') return;
     
     console.log('[POLLING] Starting auto-check for orderCode:', transaction.orderCode);
+    let stopped = false;
+    let interval: ReturnType<typeof setInterval>;
     
-    const interval = setInterval(async () => {
+    const pollStatus = async () => {
+      if (stopped) return;
+
       try {
         console.log('[POLLING] Checking status...');
         const { status } = await paymentService.getPaymentStatus(transaction.orderCode);
         console.log('[POLLING] Status received:', status);
         
         if (isPaidStatus(status)) {
+          stopped = true;
           clearInterval(interval);
           console.log('[POLLING] Payment confirmed! Redirecting...');
           toast.success('🎉 Thanh toán thành công! Đang chuyển hướng...');
           navigate(`/payment/success?orderCode=${transaction.orderCode}`);
         } else if (isCancelledStatus(status)) {
+          stopped = true;
           clearInterval(interval);
           toast.error('Giao dịch đã bị hủy hoặc thất bại.');
           navigate(`/payment/cancel?orderCode=${transaction.orderCode}`);
@@ -96,13 +102,17 @@ export default function CheckoutPage() {
       } catch (error) {
         console.error('[POLLING] Check status error:', error);
       }
-    }, 3000);
+    };
+
+    void pollStatus();
+    interval = setInterval(pollStatus, 3000);
 
     return () => {
       console.log('[POLLING] Cleanup interval');
+      stopped = true;
       clearInterval(interval);
     };
-  }, [transaction, timeLeft, navigate]);
+  }, [transaction, navigate]);
 
 
   const formatTime = (seconds: number) => {
