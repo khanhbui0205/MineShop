@@ -7,7 +7,6 @@ import AdminScreen from './components/AdminScreen';
 import CheckoutPage from './features/payment/CheckoutPage';
 import SuccessPage from './features/payment/SuccessPage';
 import FailedPage from './features/payment/FailedPage';
-import HistoryPage from './features/payment/HistoryPage';
 import MainLayout from './components/MainLayout';
 import api from './lib/api';
 
@@ -77,7 +76,11 @@ export default function App() {
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-900 font-sans overflow-x-hidden">
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ zIndex: 9999 }}
+        toastOptions={{ style: { zIndex: 9999 } }}
+      />
       <Routes>
         {/* Public Routes */}
         <Route 
@@ -156,7 +159,7 @@ export default function App() {
           path="/payment/history" 
           element={
             currentUser 
-            ? <MainLayout user={currentUser} onLogout={handleLogout}><HistoryPage /></MainLayout> 
+            ? <Navigate to="/" state={{ tab: 'Lịch sử' }} replace />
             : <Navigate to="/login" />
           } 
         />

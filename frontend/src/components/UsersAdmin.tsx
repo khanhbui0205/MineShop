@@ -488,7 +488,7 @@ export default function UsersAdmin({
                   <select
                     value={banDuration}
                     onChange={e => setBanDuration(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all cursor-pointer"
+                    className="admin-select w-full border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-all cursor-pointer"
                   >
                     <option value="24h">24 Giờ</option>
                     <option value="7d">7 Ngày</option>

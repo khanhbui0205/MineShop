@@ -39,7 +39,7 @@ export default function MainLayout({ children, user, onLogout }: MainLayoutProps
   const navItems = [
     { label: 'Trang chủ', path: '/', icon: <Home className="w-5 h-5" /> },
     { label: 'Cửa hàng', path: '/', state: { tab: 'Cửa hàng' }, icon: <ShoppingCart className="w-5 h-5" /> },
-    { label: 'Lịch sử', path: '/payment/history', icon: <HistoryIcon className="w-5 h-5" /> },
+    { label: 'Lịch sử', path: '/', state: { tab: 'Lịch sử' }, icon: <HistoryIcon className="w-5 h-5" /> },
     { label: 'Cài đặt', path: '/', state: { tab: 'Cài đặt' }, icon: <SettingsIcon className="w-5 h-5" /> },
   ];
 

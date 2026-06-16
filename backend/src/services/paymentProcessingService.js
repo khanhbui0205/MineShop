@@ -126,6 +126,48 @@ function validateWebhookData(data, transaction) {
   }
 }
 
+function isValidMinecraftPlayerName(playerName) {
+  return /^[a-zA-Z0-9_]{3,16}$/.test(String(playerName || ''));
+}
+
+function getPackageBaseCoins(pkg) {
+  return Number(pkg?.coinAmount || pkg?.baseCoins || 0);
+}
+
+function getPackageBonusCoins(pkg) {
+  return Number(pkg?.bonusCoins ?? pkg?.bonusCoin ?? 0);
+}
+
+function buildCoinReward(pkg, transaction) {
+  const baseCoins = Number(transaction.baseCoins || getPackageBaseCoins(pkg));
+  const bonusCoins = Number(transaction.bonusCoins ?? getPackageBonusCoins(pkg));
+  const totalCoins = Number(transaction.totalCoins || transaction.coinsChange || (baseCoins + bonusCoins));
+  const playerName = String(transaction.playerName || '').trim();
+
+  if (!isValidMinecraftPlayerName(playerName)) {
+    throw new Error('Invalid Minecraft playerName for reward command');
+  }
+
+  if (!Number.isSafeInteger(baseCoins) || baseCoins <= 0) {
+    throw new Error('Invalid baseCoins for reward command');
+  }
+
+  if (!Number.isSafeInteger(bonusCoins) || bonusCoins < 0) {
+    throw new Error('Invalid bonusCoins for reward command');
+  }
+
+  if (!Number.isSafeInteger(totalCoins) || totalCoins <= 0) {
+    throw new Error('Invalid totalCoins for reward command');
+  }
+
+  return {
+    baseCoins,
+    bonusCoins,
+    totalCoins,
+    command: `eco give ${playerName} ${totalCoins}`,
+  };
+}
+
 async function markPaymentFailure(transaction, status = PAYMENT_STATUS.FAILED, meta = {}) {
   const normalized = normalizePaymentStatus(status);
   const targetStatus = normalized === PAYMENT_STATUS.CANCELLED ? PAYMENT_STATUS.CANCELLED : PAYMENT_STATUS.FAILED;
@@ -213,7 +255,46 @@ async function processSuccessfulPayment(transaction, meta = {}) {
 
   if (claimed.package && claimed.playerName && !claimed.rewardDelivered) {
     const pkg = await Package.findById(claimed.package);
-    if (pkg && Array.isArray(pkg.commands) && pkg.commands.length > 0) {
+    if (pkg?.category === 'Coin') {
+      let reward;
+      try {
+        reward = buildCoinReward(pkg, claimed);
+        const response = await rconService.sendCommand(reward.command);
+        await PackageExecutionLog.create({
+          paymentId: claimed._id,
+          packageId: pkg._id,
+          playerName: claimed.playerName,
+          command: reward.command,
+          success: true,
+          response: response || 'Success',
+        });
+
+        claimed.baseCoins = reward.baseCoins;
+        claimed.bonusCoins = reward.bonusCoins;
+        claimed.totalCoins = reward.totalCoins;
+        claimed.command = reward.command;
+        claimed.rewardDelivered = true;
+        await claimed.save();
+      } catch (error) {
+        console.error('[RCON SERVICE] Error executing coin reward command:', error.message);
+        await PackageExecutionLog.create({
+          paymentId: claimed._id,
+          packageId: pkg._id,
+          playerName: claimed.playerName,
+          command: reward?.command || claimed.command || 'AUTO_COIN_REWARD_NOT_BUILT',
+          success: false,
+          response: error.message,
+        });
+
+        if (reward) {
+          claimed.baseCoins = reward.baseCoins;
+          claimed.bonusCoins = reward.bonusCoins;
+          claimed.totalCoins = reward.totalCoins;
+          claimed.command = reward.command;
+          await claimed.save();
+        }
+      }
+    } else if (pkg && Array.isArray(pkg.commands) && pkg.commands.length > 0) {
       let allSuccess = true;
 
       for (const cmdTemplate of pkg.commands) {

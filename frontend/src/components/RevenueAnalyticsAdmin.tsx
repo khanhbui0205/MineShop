@@ -400,15 +400,15 @@ export default function RevenueAnalyticsAdmin() {
               />
             </div>
             <select 
-              className="bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-xs text-white focus:outline-none cursor-pointer"
+              className="admin-select border border-white/10 rounded-xl py-2 px-4 text-xs focus:outline-none cursor-pointer"
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             >
-              <option value="" className="bg-[#1a2030]">Tất cả trạng thái</option>
-              <option value="completed" className="bg-[#1a2030]">Thành công</option>
-              <option value="pending" className="bg-[#1a2030]">Đang chờ</option>
-              <option value="cancelled" className="bg-[#1a2030]">Đã hủy</option>
-              <option value="failed" className="bg-[#1a2030]">Thất bại</option>
+              <option value="">Tất cả trạng thái</option>
+              <option value="completed">Thành công</option>
+              <option value="pending">Đang chờ</option>
+              <option value="cancelled">Đã hủy</option>
+              <option value="failed">Thất bại</option>
             </select>
           </div>
         </div>

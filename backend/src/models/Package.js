@@ -24,6 +24,23 @@ const packageSchema = new mongoose.Schema(
     bonusCoin: {
       type: Number,
       default: 0,
+      min: [0, 'Xu thưởng không được âm'],
+    },
+    bonusCoins: {
+      type: Number,
+      default: 0,
+      min: [0, 'Xu thưởng không được âm'],
+    },
+    promotionType: {
+      type: String,
+      enum: ['none', 'bonus_coin', 'discount'],
+      default: 'none',
+    },
+    discountPercent: {
+      type: Number,
+      default: 0,
+      min: [0, 'Discount percent must be at least 0'],
+      max: [100, 'Discount percent must not exceed 100'],
     },
     isVisible: {
       type: Boolean,
