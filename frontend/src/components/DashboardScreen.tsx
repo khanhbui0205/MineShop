@@ -38,11 +38,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Transaction, UserProfile, StoreItem, PortalTab } from '../types';
-import { TOP_DONATORS } from '../data';
 import api from '../lib/api';
 import { formatVND } from '../lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import paymentService from '../services/paymentService';
+import type { MonthlyTopDonator } from '../services/paymentService';
 import minecraftService from '../services/minecraftService';
 
 
@@ -68,6 +68,8 @@ function mapProfileData(data: any): UserProfile {
 }
 
 export default function DashboardScreen({ user, onLogout }: DashboardScreenProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   // Current user global state from backend
   const [userProfile, setUserProfile] = useState<UserProfile>(() => mapProfileData(user));
 
@@ -75,8 +77,9 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [monthlyTopDonators, setMonthlyTopDonators] = useState<MonthlyTopDonator[]>([]);
   const [storeItems, setStoreItems] = useState<StoreItem[]>([]);
-  const [activeTab, setActiveTab] = useState<PortalTab>('Trang chủ');
+  const [activeTab, setActiveTab] = useState<PortalTab>(() => ((location.state as any)?.tab as PortalTab) || 'Trang chủ');
   const [storeFilter, setStoreFilter] = useState<'All' | 'Rank' | 'BattlePass' | 'Cosmetic' | 'Coins'>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -85,11 +88,11 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     const fetchDashboardData = async () => {
       try {
         const [txRes, pkgRes, profileRes] = await Promise.all([
-          api.get('/store/transactions'),
+          paymentService.getHistory(1, 50),
           api.get('/packages'),
           api.get('/users/profile') // Get fresh profile with sync balance
         ]);
-        setTransactions(txRes.data);
+        setTransactions(txRes.transactions || []);
         setUserProfile(mapProfileData(profileRes.data));
         
         // Map CoinPackage to StoreItem
@@ -122,6 +125,25 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    const tab = (location.state as any)?.tab as PortalTab | undefined;
+    if (tab) setActiveTab(tab);
+  }, [location.state]);
+
+  useEffect(() => {
+    const fetchMonthlyTopDonators = async () => {
+      try {
+        const data = await paymentService.getMonthlyTopDonators();
+        setMonthlyTopDonators(data.topDonators || []);
+      } catch (error) {
+        console.warn('Failed to fetch monthly top donators.');
+        setMonthlyTopDonators([]);
+      }
+    };
+
+    fetchMonthlyTopDonators();
+  }, []);
+
   // States for Modals
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'refuse' } | null>(null);
 
@@ -144,6 +166,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   };
 
   const linkedMcName = userProfile.minecraftUsername || userProfile.username;
+  const monthlyTopByRank = new Map(monthlyTopDonators.map((donator) => [donator.rank, donator]));
+  const formatTopAmount = (amount: number) => `${new Intl.NumberFormat('vi-VN').format(amount)} VND`;
 
   // Requirement 5: Auto refresh balance helper
   const refreshBalance = useCallback(async () => {
@@ -165,7 +189,22 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     return () => clearInterval(interval);
   }, [activeTab, refreshBalance]);
 
-  const navigate = useNavigate();
+  useEffect(() => {
+    if (activeTab !== 'Lịch sử') return;
+
+    const fetchPaymentHistory = async () => {
+      try {
+        const data = await paymentService.getHistory(1, 50);
+        setTransactions(data.transactions || []);
+      } catch (error) {
+        console.warn('Failed to refresh payment history.');
+      }
+    };
+
+    fetchPaymentHistory();
+    const interval = setInterval(fetchPaymentHistory, 3000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   const handlePurchaseItem = (item: StoreItem) => {
     // Show details first
@@ -775,33 +814,54 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           Top Nạp Thẻ Tháng Này
                         </h4>
 
-                        <div className="grid grid-cols-3 gap-4 items-end pt-2">
-                          
-                          {/* 2nd Place slayer */}
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-6 h-6 bg-slate-200 text-slate-600 rounded-bl text-xs font-black flex items-center justify-center">2</div>
-                            <img alt="Slayer user avatar" className="w-10 h-10 rounded-full border border-slate-200 mb-2 object-cover shadow-sm" src={TOP_DONATORS[1].avatar} />
-                            <span className="text-xs text-slate-800 block font-bold truncate max-w-full">{TOP_DONATORS[1].name}</span>
-                            <span className="text-[10px] text-indigo-600 font-mono font-bold">{TOP_DONATORS[1].amount}</span>
+                        {monthlyTopDonators.length === 0 ? (
+                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-6 text-center">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                              Chưa có dữ liệu nạp thẻ trong tháng này
+                            </p>
                           </div>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-4 items-end pt-2">
+                            {monthlyTopByRank.get(2) ? (
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-6 h-6 bg-slate-200 text-slate-600 rounded-bl text-xs font-black flex items-center justify-center">2</div>
+                                <img alt="Top 2 user avatar" className="w-10 h-10 rounded-full border border-slate-200 mb-2 object-cover shadow-sm" src={monthlyTopByRank.get(2)!.avatar} />
+                                <span className="text-xs text-slate-800 block font-bold truncate max-w-full">{monthlyTopByRank.get(2)!.displayName}</span>
+                                <span className="text-[10px] text-indigo-600 font-mono font-bold">{formatTopAmount(monthlyTopByRank.get(2)!.totalAmount)}</span>
+                              </div>
+                            ) : (
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center justify-center min-h-[108px]">
+                                <span className="text-[10px] text-slate-300 font-bold uppercase">Chưa có top 2</span>
+                              </div>
+                            )}
 
-                          {/* 1st Place NotchFan */}
-                          <div className="bg-white border-2 border-amber-300 rounded-xl p-4 text-center flex flex-col items-center relative overflow-hidden group shadow-lg scale-105 z-10">
-                            <div className="absolute top-0 right-0 w-6 h-6 bg-amber-400 text-amber-950 rounded-bl text-xs font-black flex items-center justify-center">1</div>
-                            <img alt="Top donator avatar" className="w-12 h-12 rounded-full border-2 border-amber-300 mb-2 object-cover shadow" src={TOP_DONATORS[0].avatar} />
-                            <span className="text-xs text-amber-800 block font-extrabold truncate max-w-full">{TOP_DONATORS[0].name}</span>
-                            <span className="text-xs text-amber-600 font-mono font-black">{TOP_DONATORS[0].amount}</span>
+                            {monthlyTopByRank.get(1) ? (
+                              <div className="bg-white border-2 border-amber-300 rounded-xl p-4 text-center flex flex-col items-center relative overflow-hidden group shadow-lg scale-105 z-10">
+                                <div className="absolute top-0 right-0 w-6 h-6 bg-amber-400 text-amber-950 rounded-bl text-xs font-black flex items-center justify-center">1</div>
+                                <img alt="Top 1 user avatar" className="w-12 h-12 rounded-full border-2 border-amber-300 mb-2 object-cover shadow" src={monthlyTopByRank.get(1)!.avatar} />
+                                <span className="text-xs text-amber-800 block font-extrabold truncate max-w-full">{monthlyTopByRank.get(1)!.displayName}</span>
+                                <span className="text-xs text-amber-600 font-mono font-black">{formatTopAmount(monthlyTopByRank.get(1)!.totalAmount)}</span>
+                              </div>
+                            ) : (
+                              <div className="bg-white border-2 border-amber-100 rounded-xl p-4 text-center flex flex-col items-center justify-center min-h-[124px]">
+                                <span className="text-[10px] text-slate-300 font-bold uppercase">Chưa có top 1</span>
+                              </div>
+                            )}
+
+                            {monthlyTopByRank.get(3) ? (
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-6 h-6 bg-slate-200 text-slate-600 rounded-bl text-xs font-black flex items-center justify-center">3</div>
+                                <img alt="Top 3 user avatar" className="w-10 h-10 rounded-full border border-slate-200 mb-2 object-cover shadow-sm" src={monthlyTopByRank.get(3)!.avatar} />
+                                <span className="text-xs text-slate-800 block font-bold truncate max-w-full">{monthlyTopByRank.get(3)!.displayName}</span>
+                                <span className="text-[10px] text-amber-600 font-mono font-bold">{formatTopAmount(monthlyTopByRank.get(3)!.totalAmount)}</span>
+                              </div>
+                            ) : (
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center justify-center min-h-[108px]">
+                                <span className="text-[10px] text-slate-300 font-bold uppercase">Chưa có top 3</span>
+                              </div>
+                            )}
                           </div>
-
-                          {/* 3rd Place MinerPro */}
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-6 h-6 bg-slate-200 text-slate-600 rounded-bl text-xs font-black flex items-center justify-center">3</div>
-                            <img alt="MinerPro user profile avatar" className="w-10 h-10 rounded-full border border-slate-200 mb-2 object-cover shadow-sm" src={TOP_DONATORS[2].avatar} />
-                            <span className="text-xs text-slate-800 block font-bold truncate max-w-full">{TOP_DONATORS[2].name}</span>
-                            <span className="text-[10px] text-amber-600 font-mono font-bold">{formatVND(parseInt(TOP_DONATORS[2].amount.replace(/\D/g, '')) * 1000)}</span>
-                          </div>
-
-                        </div>
+                        )}
                       </div>
 
                     </div>
@@ -839,7 +899,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           : 'bg-slate-50 text-slate-600 hover:bg-slate-150 border border-slate-200/50'
                         }`}
                       >
-                        {f === 'All' ? 'Tất cả' : f === 'Rank' ? 'Hạng Premium' : f === 'BattlePass' ? 'Battle Pass' : f === 'Cosmetic' ? 'Vật phẩm đắp' : 'Nạp Coi USD'}
+                        {f === 'All' ? 'Tất cả' : f === 'Rank' ? 'Hạng Premium' : f === 'BattlePass' ? 'Battle Pass' : f === 'Cosmetic' ? 'Vật phẩm' : 'Nạp coins'}
                       </button>
                     ))}
                     
@@ -1157,34 +1217,6 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         defaultChecked={true}
                         className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
                         onChange={() => triggerNotification('Thay đổi trạng thái 2FA thành công')}
-                      />
-                    </div>
-
-                    {/* Checkbox item 2 */}
-                    <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                      <div>
-                        <span className="block font-bold text-slate-800">Liên kết Discord</span>
-                        <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Đồng bộ danh hiệu lên Discord</span>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        defaultChecked={false}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
-                        onChange={() => triggerNotification('Liên kết đồng bộ Discord thành công! Hãy liên hệ bot để gạt.')}
-                      />
-                    </div>
-
-                    {/* Checkbox item 3 */}
-                    <div className="flex items-center justify-between py-2">
-                      <div>
-                        <span className="block font-bold text-slate-800">Thông báo Webhook</span>
-                        <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Cảnh báo khi tài khoản đăng nhập</span>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        defaultChecked={true}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
-                        onChange={() => triggerNotification('Cài đặt Webhook thành công')}
                       />
                     </div>
 

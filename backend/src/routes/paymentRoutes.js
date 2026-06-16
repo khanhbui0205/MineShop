@@ -5,6 +5,7 @@ const {
   handleWebhook,
   getPaymentStatus,
   getPaymentHistory,
+  getMonthlyTopDonators,
   getPaymentById,
   resumePayment,
   checkPaymentStatus
@@ -25,6 +26,7 @@ router.post('/create', protect, createPayment);
 router.get('/status/:orderCode', protect, getPaymentStatus);
 router.get('/check/:orderCode', protect, checkPaymentStatus);
 router.get('/history', protect, getPaymentHistory);
+router.get('/top-donators/monthly', protect, getMonthlyTopDonators);
 router.get('/resume/:id', protect, resumePayment);
 router.get('/:id', protect, getPaymentById);
 

@@ -7,7 +7,6 @@ import AdminScreen from './components/AdminScreen';
 import CheckoutPage from './features/payment/CheckoutPage';
 import SuccessPage from './features/payment/SuccessPage';
 import FailedPage from './features/payment/FailedPage';
-import HistoryPage from './features/payment/HistoryPage';
 import MainLayout from './components/MainLayout';
 import api from './lib/api';
 
@@ -156,7 +155,7 @@ export default function App() {
           path="/payment/history" 
           element={
             currentUser 
-            ? <MainLayout user={currentUser} onLogout={handleLogout}><HistoryPage /></MainLayout> 
+            ? <Navigate to="/" state={{ tab: 'Lịch sử' }} replace />
             : <Navigate to="/login" />
           } 
         />

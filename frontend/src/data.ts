@@ -108,26 +108,4 @@ export const STORE_ITEMS: StoreItem[] = [
   },
 ];
 
-export const TOP_DONATORS = [
-  {
-    id: 'donator-1',
-    name: 'NotchFan99',
-    amount: '320.000 VNĐ',
-    rank: 1,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCIzoidLln08wks_vcKlRrn4oWxhTRWfcFrUVDuK-3b2-93ByuyCPuaiHPSl9ybKra4NZodWAtNJUITrBzxESRfrdCMe8xHxKOs5ZnMGhQ0HNaFDyLGDdQAG1qcpVE_lPZaipujxmY2ZrsIKqy1KdlePYdG0EVpJHIQoLlcyPb8au6wR0fqFTNunnlaBoB3yc0zTF7IF7cuTu05-ymQ7TP7UN4AqjdIVMsnT8c2qSTaVNHoaYXFvYouP2WfTNglLjkwwEVZKDk5qYU',
-  },
-  {
-    id: 'donator-2',
-    name: 'xX_Slayer_Xx',
-    amount: '150.000 VNĐ',
-    rank: 2,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAouBAV1MMD6KCBGiD_KQpvrWQsVdxLSIOMYP6UZ9ETRiRG5swm8MaIzMR11Z6w7Vb8nf5qWS6RIRaLbr-hswKxfluw17VqHhrUn0J7-7eMb1CYcp07LOf5uF2OVVZABn3E1ZLnTNhLd7g484suZfayX__aMuQpLSyEYo1GdWN_EQEGm6aR5jG8bagu9abSnoJz5H_jTP9sfnmB0S3hPXCRa01ugsIj4iPSKUTzCTO8_c5BkeBKJlhcKEbJeKWj6gcWdDGSrejcC1Q',
-  },
-  {
-    id: 'donator-3',
-    name: 'MinerPro',
-    amount: '95.000 VNĐ',
-    rank: 3,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuANYEbLSVBcqUcIORW3SRdE4XmLYdY-ei5EevGKaPWwr9S3Fyp0aJoTMwmu5gVNpUeaiCoRGFf269GwPNjOBO0drZSpKXvyyjj1C5J8nyYa5zc90FOFutsuV_HOEyr97ck-0sqlTpP9siwsqutDhX5GpLZk3Uc17OGnkavA5Ltom_7spvcGug9vYC6tV6kuZ80kBtsrOJ1FqGwIogjU-ebjn99w7E099NfQsB-_04Du2-0Mow3VeUGMci9agtOkO5UiCmpkTgo0AWs',
-  },
-];
+

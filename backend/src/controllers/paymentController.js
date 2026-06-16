@@ -343,6 +343,81 @@ exports.getPaymentHistory = async (req, res) => {
   }
 };
 
+exports.getMonthlyTopDonators = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const rows = await Transaction.aggregate([
+      {
+        $match: {
+          type: 'Deposit',
+          status: getStatusQuery(PAYMENT_STATUS.PAID),
+          createdAt: { $gte: startOfMonth, $lt: startOfNextMonth },
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+          totalAmount: {
+            $sum: {
+              $convert: {
+                input: '$amount',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+      },
+      { $match: { totalAmount: { $gt: 0 } } },
+      { $sort: { totalAmount: -1 } },
+      { $limit: 3 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $project: {
+          _id: 0,
+          userId: '$user._id',
+          username: '$user.username',
+          minecraftUsername: '$user.minecraftUsername',
+          totalAmount: 1,
+        },
+      },
+    ]);
+
+    const topDonators = rows.map((row, index) => {
+      const displayName = row.minecraftUsername || row.username || 'Player';
+      return {
+        rank: index + 1,
+        userId: row.userId,
+        username: row.username,
+        displayName,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff&bold=true`,
+        totalAmount: row.totalAmount,
+      };
+    });
+
+    return res.json({
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      topDonators,
+    });
+  } catch (error) {
+    console.error('[MONTHLY TOP DONATORS ERROR]', error.message);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getPaymentById = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id)

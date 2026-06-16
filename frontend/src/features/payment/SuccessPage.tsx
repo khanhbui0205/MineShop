@@ -59,7 +59,7 @@ export default function SuccessPage() {
 
         navigate('/', { replace: true });
       } catch (error) {
-        navigate('/payment/history', { replace: true });
+        navigate('/', { replace: true, state: { tab: 'Lịch sử' } });
       } finally {
         setLoading(false);
       }
@@ -152,7 +152,7 @@ export default function SuccessPage() {
             QUAY LẠI TRANG CHỦ
           </button>
           <button
-            onClick={() => navigate('/payment/history')}
+            onClick={() => navigate('/', { state: { tab: 'Lịch sử' } })}
             className="flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 font-bold py-4 rounded-2xl transition-all text-xs uppercase tracking-widest"
           >
             <HistoryIcon size={18} />

@@ -30,6 +30,15 @@ export interface PaymentTransaction {
   bankName?: string;
 }
 
+export interface MonthlyTopDonator {
+  rank: 1 | 2 | 3;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatar: string;
+  totalAmount: number;
+}
+
 const paymentService = {
   createPayment: async (packageId: string): Promise<CreatePaymentResponse> => {
     const response = await http.post('/payment/create', { packageId });
@@ -61,6 +70,11 @@ const paymentService = {
     const response = await http.get('/payment/history', {
       params: { page, limit, status },
     });
+    return response.data;
+  },
+
+  getMonthlyTopDonators: async (): Promise<{ month: number; year: number; topDonators: MonthlyTopDonator[] }> => {
+    const response = await http.get('/payment/top-donators/monthly');
     return response.data;
   },
 
