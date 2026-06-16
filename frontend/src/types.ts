@@ -12,7 +12,7 @@ export interface Transaction {
   coinsChange: number;
   date?: string;
   createdAt?: string;
-  status: 'pending' | 'completed' | 'cancelled' | 'failed' | 'Completed' | 'Claimed';
+  status: 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED' | 'pending' | 'completed' | 'cancelled' | 'failed' | 'Completed' | 'Claimed';
   playerName?: string;
   minecraftUsername?: string;
   transactionId?: string;

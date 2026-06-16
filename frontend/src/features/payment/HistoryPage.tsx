@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Clock, CheckCircle2, XCircle, Search, HelpCircle, AlertCircle, RotateCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -15,12 +15,8 @@ export default function HistoryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchHistory();
-  }, [page, filter]);
-
-  const fetchHistory = async () => {
-    setLoading(true);
+  const fetchHistory = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const statusFilter = filter === 'ALL' ? undefined : filter.toLowerCase();
       const data = await paymentService.getHistory(page, 10, statusFilter);
@@ -29,9 +25,21 @@ export default function HistoryPage() {
     } catch (error) {
       toast.error('Không thể tải lịch sử giao dịch');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [filter, page]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchHistory(false);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [fetchHistory]);
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -185,7 +193,7 @@ export default function HistoryPage() {
                       {getStatusBadge(tx.status)}
                     </td>
                     <td className="py-6 px-8 text-center text-slate-600">
-                      {(tx.status === 'pending') && (
+                      {(String(tx.status).toLowerCase() === 'pending') && (
                         <button
                           onClick={() => {
                             if (tx.paymentUrl) {

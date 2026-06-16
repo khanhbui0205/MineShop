@@ -750,15 +750,15 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                                   </td>
                                   <td className="py-3.5 px-4 text-right">
                                     <span className={`inline-block px-2.5 py-1 text-[10px] font-mono tracking-wider font-semibold rounded-lg uppercase border ${
-                                      tx.status === 'completed' 
+                                      ['completed', 'paid'].includes(String(tx.status).toLowerCase()) 
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                      : tx.status === 'pending'
+                                      : String(tx.status).toLowerCase() === 'pending'
                                       ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
                                       : 'bg-red-50 text-red-700 border-red-200'
                                     }`}>
-                                      {tx.status === 'completed' ? 'Hoàn tất' : 
-                                       tx.status === 'pending' ? 'Chờ xử lý' : 
-                                       tx.status === 'cancelled' ? 'Đã hủy' : 'Thất bại'}
+                                      {['completed', 'paid'].includes(String(tx.status).toLowerCase()) ? 'Hoàn tất' : 
+                                       String(tx.status).toLowerCase() === 'pending' ? 'Chờ xử lý' : 
+                                       String(tx.status).toLowerCase() === 'cancelled' ? 'Đã hủy' : 'Thất bại'}
                                     </span>
                                   </td>
                                 </tr>
@@ -1015,19 +1015,19 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           <td className="py-4 px-4 text-right">
                             <div className="flex flex-col items-end gap-1.5">
                               <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
-                                tx.status === 'completed'
+                                ['completed', 'paid'].includes(String(tx.status).toLowerCase())
                                 ? 'bg-emerald-100 text-emerald-700'
-                                : tx.status === 'pending'
+                                : String(tx.status).toLowerCase() === 'pending'
                                 ? 'bg-amber-100 text-amber-700 animate-pulse'
-                                : tx.status === 'failed'
+                                : String(tx.status).toLowerCase() === 'failed'
                                 ? 'bg-red-200 text-red-900 font-black'
                                 : 'bg-red-100 text-red-700'
                               }`}>
-                                {tx.status === 'completed' ? 'Hoàn tất' : 
-                                 tx.status === 'pending' ? 'Chờ xử lý' : 
-                                 tx.status === 'cancelled' ? 'Đã hủy' : 'Thất bại'}
+                                {['completed', 'paid'].includes(String(tx.status).toLowerCase()) ? 'Hoàn tất' : 
+                                 String(tx.status).toLowerCase() === 'pending' ? 'Chờ xử lý' : 
+                                 String(tx.status).toLowerCase() === 'cancelled' ? 'Đã hủy' : 'Thất bại'}
                               </span>
-                              {tx.status === 'pending' && (
+                              {String(tx.status).toLowerCase() === 'pending' && (
                                 <button 
                                   onClick={() => navigate('/payment/checkout/' + (tx._id || tx.id))}
                                   className="text-[10px] font-black text-indigo-600 underline hover:text-slate-900"

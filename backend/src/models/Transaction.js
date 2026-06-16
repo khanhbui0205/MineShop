@@ -42,8 +42,8 @@ const transactionSchema = new mongoose.Schema(
     qrCode: String,
     status: {
       type: String,
-      enum: ['pending', 'completed', 'cancelled', 'failed'],
-      default: 'pending',
+      enum: ['PENDING', 'PAID', 'CANCELLED', 'FAILED', 'pending', 'completed', 'cancelled', 'failed'],
+      default: 'PENDING',
     },
     playerName: {
       type: String,
@@ -61,11 +61,19 @@ const transactionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    balanceCredited: {
+      type: Boolean,
+      default: false,
+    },
     paidAt: Date,
+    failedAt: Date,
   },
   {
     timestamps: true,
   }
 );
+
+transactionSchema.index({ user: 1, status: 1, createdAt: -1 });
+transactionSchema.index({ orderCode: 1, status: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);
