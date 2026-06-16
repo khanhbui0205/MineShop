@@ -227,6 +227,11 @@ exports.handleWebhook = async (req, res) => {
 
     validateWebhookData(data, transaction);
 
+    if (!transaction) {
+      console.warn('[PAYOS WEBHOOK] Verified webhook ignored because orderCode was not found:', orderCode);
+      return res.json({ success: true });
+    }
+
     const payosStatus = normalizePayOSStatus(data);
     if (payosStatus === PAYMENT_STATUS.PAID) {
       await processSuccessfulPayment(transaction, {
