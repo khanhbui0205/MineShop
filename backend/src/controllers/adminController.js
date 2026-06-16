@@ -259,6 +259,7 @@ exports.getUsers = async (req, res) => {
             { username: { $regex: search, $options: 'i' } },
             { email: { $regex: search, $options: 'i' } },
             { phoneNumber: { $regex: search, $options: 'i' } },
+            { minecraftUsername: { $regex: search, $options: 'i' } },
           ],
         }
       : {};
@@ -273,12 +274,15 @@ exports.getUsers = async (req, res) => {
       User.countDocuments(searchFilter),
     ]);
 
-    // Requirement 6: Sync balances for all users in the list
+    // Sync balances and ranks from Minecraft server
     const users = await Promise.all(usersRaw.map(async (u) => {
       if (u.minecraftUsername) {
         try {
-          const gameBalance = await minecraftService.getPlayerBalance(u.minecraftUsername);
-          return { ...u, balance: gameBalance };
+          const [gameBalance, gameRank] = await Promise.all([
+            minecraftService.getPlayerBalance(u.minecraftUsername),
+            minecraftService.getPlayerRank(u.minecraftUsername),
+          ]);
+          return { ...u, balance: gameBalance, rank: gameRank };
         } catch (err) {
           return u;
         }
@@ -305,13 +309,16 @@ exports.getUserById = async (req, res) => {
     const user = await User.findById(req.params.id).select('-password').lean();
     if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     
-    // Requirement 7: Show real-time balance and sync info
+    // Show real-time balance, rank and sync info
     if (user.minecraftUsername) {
       try {
-        const gameBalance = await minecraftService.getPlayerBalance(user.minecraftUsername);
+        const [gameBalance, gameRank] = await Promise.all([
+          minecraftService.getPlayerBalance(user.minecraftUsername),
+          minecraftService.getPlayerRank(user.minecraftUsername),
+        ]);
         user.balance = gameBalance;
-        
-        // Find cache if exists to show last sync
+        user.rank = gameRank;
+
         const cached = minecraftService.balanceCache.get(user.minecraftUsername);
         user.minecraftLastSync = cached ? new Date(cached.timestamp) : new Date();
       } catch (err) {

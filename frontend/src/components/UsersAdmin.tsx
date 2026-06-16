@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, Gavel,
   ChevronLeft, ChevronRight, RefreshCw, Eye,
-  UserCheck, Lock, X, Mail, Phone,
+  UserCheck, Lock, X, Mail,
 } from 'lucide-react';
 import type { Player, AuditLog } from '../types';
 import { formatVND } from '../lib/utils';
@@ -183,7 +183,7 @@ export default function UsersAdmin({
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo tên, email hoặc số điện thoại..."
+            placeholder="Tìm theo email, Minecraft username hoặc số điện thoại..."
             className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
           />
         </div>
@@ -210,11 +210,11 @@ export default function UsersAdmin({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/5 text-slate-400 border-b border-white/10 text-xs uppercase tracking-wider">
-                  <th className="px-6 py-4">Người dùng</th>
-                  <th className="px-6 py-4">Liên hệ</th>
-                  <th className="px-6 py-4 text-center">Trạng thái</th>
-                  <th className="px-6 py-4 text-center">Số dư / Nạp</th>
-                  <th className="px-6 py-4 text-center">Vai trò</th>
+                  <th className="px-6 py-4">Email</th>
+                  <th className="px-6 py-4">Minecraft Username</th>
+                  <th className="px-6 py-4 text-center">Current Balance</th>
+                  <th className="px-6 py-4 text-center">Current Rank</th>
+                  <th className="px-6 py-4 text-center">Registration Date</th>
                   <th className="px-6 py-4 text-right">Thao tác</th>
                 </tr>
               </thead>
@@ -235,90 +235,55 @@ export default function UsersAdmin({
                         exit={{ opacity: 0 }}
                         className={`hover:bg-white/5 transition-all group ${player.isBanned ? 'bg-red-950/10' : ''}`}
                       >
-                        {/* User info */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={player.avatarUrl}
-                              alt={player.name}
-                              className="w-9 h-9 rounded-lg border border-white/10 object-cover bg-white/5"
-                            />
-                            <div>
-                              <p className="font-semibold text-white text-sm flex items-center gap-1.5">
-                                {player.name}
-                                {player.isBanned && (
-                                  <span className="bg-red-900/40 text-red-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
-                                    KHÓA
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                                ID: {player.id.substring(0, 12)}...
-                              </p>
-                              {player.minecraftUsername && (
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <p className="text-[10px] text-indigo-400 font-bold">
-                                    MC: {player.minecraftUsername}
-                                  </p>
-                                  {player.minecraftVerified ? (
-                                    <span className="text-[9px] bg-emerald-900/40 text-emerald-400 px-1.5 py-0.5 rounded font-bold">VERIFIED</span>
-                                  ) : (
-                                    <span className="text-[9px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded font-bold">⚠ UNVERIFIED</span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Contact */}
+                        {/* Email */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
                             <span className="text-xs text-slate-300 flex items-center gap-1.5">
                               <Mail size={11} className="text-slate-500" />
                               {player.email}
                             </span>
-                            {player.phoneNumber && (
-                              <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                                <Phone size={11} className="text-slate-500" />
-                                {player.phoneNumber}
+                            {player.isBanned && (
+                              <span className="bg-red-900/40 text-red-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase w-fit">
+                                KHÓA
                               </span>
                             )}
                           </div>
                         </td>
 
-                        {/* Status */}
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                            player.isBanned
-                              ? 'bg-red-900/30 text-red-400 border border-red-900/50'
-                              : 'bg-emerald-900/30 text-emerald-400 border border-emerald-900/50'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${player.isBanned ? 'bg-red-400' : 'bg-emerald-400'}`} />
-                            {player.isBanned ? 'Đã khóa' : 'Hoạt động'}
-                          </span>
-                        </td>
-
-                        {/* Balance */}
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs text-white font-semibold font-mono">
-                              {(player.balance || 0).toLocaleString('vi-VN')} Xu
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                              Đã nạp: {formatVND(player.donated)}
+                        {/* Minecraft Username */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={`https://minotar.net/avatar/${player.minecraftUsername || player.name}/32`}
+                              alt={player.minecraftUsername || player.name}
+                              className="w-8 h-8 rounded-lg border border-white/10 object-cover bg-white/5"
+                            />
+                            <span className="text-sm font-semibold text-indigo-300">
+                              {player.minecraftUsername || '—'}
                             </span>
                           </div>
                         </td>
 
-                        {/* Role */}
+                        {/* Current Balance */}
                         <td className="px-6 py-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${
-                            player.role === 'admin'
-                              ? 'bg-indigo-900/40 text-indigo-400 border border-indigo-900/50'
-                              : 'bg-white/5 text-slate-400 border border-white/10'
-                          }`}>
-                            {player.role === 'admin' ? 'Admin' : 'Thành viên'}
+                          <span className="text-xs text-white font-semibold font-mono">
+                            {(player.balance || 0).toLocaleString('vi-VN')} Xu
+                          </span>
+                        </td>
+
+                        {/* Current Rank */}
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-white/5 text-slate-300 border border-white/10">
+                            {player.rank || 'Member'}
+                          </span>
+                        </td>
+
+                        {/* Registration Date */}
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-xs text-slate-400">
+                            {player.createdAt
+                              ? new Date(player.createdAt).toLocaleDateString('vi-VN')
+                              : '—'}
                           </span>
                         </td>
 
@@ -433,20 +398,14 @@ export default function UsersAdmin({
 
               <div className="grid grid-cols-2 gap-3 mb-5">
                 {[
-                  { label: 'Số dư (Server)', value: `${(selectedPlayer.balance || 0).toLocaleString('vi-VN')} Xu` },
-                  { label: 'MC Username', value: selectedPlayer.minecraftUsername || '—' },
-                  { 
-                    label: 'MC Verified', 
-                    value: selectedPlayer.minecraftUsername 
-                      ? (selectedPlayer.minecraftVerified ? '✅ Đã xác minh' : '⚠️ Chưa xác minh') 
-                      : '— Chưa liên kết' 
-                  },
+                  { label: 'Email', value: selectedPlayer.email },
+                  { label: 'Minecraft Username', value: selectedPlayer.minecraftUsername || '—' },
+                  { label: 'Current Balance', value: `${(selectedPlayer.balance || 0).toLocaleString('vi-VN')} Xu` },
+                  { label: 'Current Rank', value: selectedPlayer.rank || 'Member' },
+                  { label: 'Registration Date', value: selectedPlayer.createdAt ? new Date(selectedPlayer.createdAt).toLocaleDateString('vi-VN') : '—' },
                   { label: 'Tổng nạp', value: formatVND(selectedPlayer.donated) },
-                  { label: 'Hạng', value: selectedPlayer.rank },
                   { label: 'Vai trò', value: selectedPlayer.role === 'admin' ? 'Admin' : 'Thành viên' },
                   { label: 'Trạng thái', value: selectedPlayer.isBanned ? '⛔ Đã khóa' : '✅ Hoạt động' },
-                  { label: 'Đồng bộ lúc', value: selectedPlayer.minecraftLastSync ? new Date(selectedPlayer.minecraftLastSync).toLocaleTimeString('vi-VN') : '—' },
-                  { label: 'Đăng nhập cuối', value: selectedPlayer.lastActive || '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-white/5 rounded-xl p-3">
                     <p className="text-[10px] text-slate-500 uppercase font-semibold">{label}</p>

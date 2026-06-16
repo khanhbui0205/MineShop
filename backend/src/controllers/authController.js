@@ -1,16 +1,23 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const minecraftService = require('../services/minecraftService');
+const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { username, email, phoneNumber, password } = req.body;
+    const { username, email, phoneNumber, password, minecraftUsername: mcUsernameInput } = req.body;
+    const minecraftUsername = (mcUsernameInput || username || '').trim();
 
     // Validation: username
     if (!username || username.trim().length < 3) {
       return res.status(400).json({ message: 'Tên người dùng phải có ít nhất 3 ký tự' });
+    }
+
+    if (!minecraftUsername || minecraftUsername.length < 3) {
+      return res.status(400).json({ message: 'Vui lòng nhập tên Minecraft hợp lệ' });
     }
 
     // Validation: email
@@ -37,7 +44,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 1 chữ cái in hoa' });
     }
 
-    // Check unique
+    // Check unique portal credentials
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
     if (userExists) {
       if (userExists.email === email) {
@@ -46,11 +53,46 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Tên người dùng này đã tồn tại' });
     }
 
+    // Check Minecraft username is not already linked to another account
+    const mcTaken = await User.findOne({
+      minecraftUsername: { $regex: new RegExp(`^${minecraftUsername}$`, 'i') },
+    });
+    if (mcTaken) {
+      return res.status(400).json({
+        error: 'USERNAME_ALREADY_REGISTERED',
+        message: 'This Minecraft account is already registered.',
+      });
+    }
+
+    // Verify player exists on Minecraft server
+    const verification = await minecraftService.verifyPlayerExists(minecraftUsername);
+    if (!verification.exists) {
+      return res.status(404).json({
+        error: 'PLAYER_NOT_FOUND',
+        message: 'Nhân vật không tồn tại trên server. Bạn phải tham gia server ít nhất một lần.',
+      });
+    }
+
+    try {
+      await minecraftService.getPlayerBalance(verification.realName);
+    } catch (err) {
+      if (err.message === 'PLAYER_NOT_FOUND') {
+        return res.status(404).json({
+          error: 'PLAYER_NOT_FOUND',
+          message: 'Nhân vật không tồn tại trên hệ thống server.',
+        });
+      }
+    }
+
+    const verifiedMcName = verification.realName || minecraftUsername;
+
     const user = await User.create({
       username: username.trim(),
       email: email.trim().toLowerCase(),
       phoneNumber: phoneNumber ? phoneNumber.trim() : '',
       password,
+      minecraftUsername: verifiedMcName,
+      minecraftVerified: true,
     });
 
     if (user) {
@@ -61,6 +103,8 @@ exports.register = async (req, res) => {
         phoneNumber: user.phoneNumber,
         role: user.role,
         balance: user.balance,
+        minecraftUsername: user.minecraftUsername,
+        minecraftVerified: user.minecraftVerified,
         createdAt: user.createdAt,
         token: generateToken(user._id),
       });
@@ -68,6 +112,12 @@ exports.register = async (req, res) => {
       res.status(400).json({ message: 'Dữ liệu người dùng không hợp lệ' });
     }
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: 'USERNAME_ALREADY_REGISTERED',
+        message: 'This Minecraft account is already registered.',
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -79,11 +129,20 @@ exports.login = async (req, res) => {
   try {
     const { email, password, username } = req.body;
 
+    if (!password) {
+      return res.status(400).json({ message: 'Vui lòng nhập mật khẩu' });
+    }
+
+    const loginId = (username || email || '').trim();
+    if (!loginId) {
+      return res.status(400).json({ message: 'Vui lòng nhập email hoặc tên đăng nhập' });
+    }
+
     // Login can be via email or username
     const user = await User.findOne({
       $or: [
-        { email: email || '' },
-        { username: username || email || '' },
+        { email: loginId.toLowerCase() },
+        { username: loginId },
       ],
     }).select('+password');
 
@@ -98,13 +157,14 @@ exports.login = async (req, res) => {
 
     // Check ban
     if (user.isBanned) {
-      // Kiểm tra ban có hết hạn chưa
       if (user.banExpiresAt && new Date() > new Date(user.banExpiresAt)) {
-        // Tự động unban
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { isBanned: false, banReason: '', banExpiresAt: null } }
+        );
         user.isBanned = false;
         user.banReason = '';
         user.banExpiresAt = null;
-        await user.save();
       } else {
         return res.status(403).json({
           message: 'Tài khoản của bạn đã bị khóa',
@@ -115,9 +175,10 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Update last login
-    user.lastLoginAt = new Date();
-    await user.save();
+    // Update last login without full document save (avoids validation issues on legacy accounts)
+    const lastLoginAt = new Date();
+    await User.updateOne({ _id: user._id }, { $set: { lastLoginAt } });
+    user.lastLoginAt = lastLoginAt;
 
     res.json({
       _id: user._id,
@@ -130,11 +191,14 @@ exports.login = async (req, res) => {
       rank: user.rank,
       battlePassLevel: user.battlePassLevel,
       battlePassXp: user.battlePassXp,
+      minecraftUsername: resolveMinecraftUsername(user),
+      minecraftVerified: user.minecraftVerified ?? Boolean(resolveMinecraftUsername(user)),
       isBanned: user.isBanned,
       createdAt: user.createdAt,
       token: generateToken(user._id),
     });
   } catch (error) {
+    console.error('[AUTH] Login error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -147,6 +211,7 @@ exports.getMe = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
+      const minecraftUsername = resolveMinecraftUsername(user);
       res.json({
         _id: user._id,
         username: user.username,
@@ -158,6 +223,8 @@ exports.getMe = async (req, res) => {
         rank: user.rank,
         battlePassLevel: user.battlePassLevel,
         battlePassXp: user.battlePassXp,
+        minecraftUsername,
+        minecraftVerified: user.minecraftVerified ?? Boolean(minecraftUsername),
         isBanned: user.isBanned,
         banReason: user.banReason,
         createdAt: user.createdAt,

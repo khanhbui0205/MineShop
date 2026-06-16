@@ -59,7 +59,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
         // Requirement 2: Check if already registered
         if (response.data.isRegistered) {
           setIsVerified(false);
-          setErrorMessage("Tên nhân vật này đã được đăng ký cho một tài khoản khác.");
+          setErrorMessage('This Minecraft account is already registered.');
           return;
         }
 
@@ -90,7 +90,8 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
         username: username.trim(),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
-        password
+        password,
+        minecraftUsername: username.trim(),
       });
 
       setSuccessMsg('Đăng kí tài khoản thành công! Đang chuyển hướng sang Đăng nhập...');

@@ -1,5 +1,6 @@
 const minecraftService = require('../services/minecraftService');
 const User = require('../models/User');
+const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
 // @desc    Get Minecraft player balance (verify player exists first)
 // @route   GET /api/minecraft/balance/:username
@@ -8,8 +9,11 @@ exports.getPlayerBalance = async (req, res) => {
   try {
     const { username } = req.params;
 
-    // Safety check: only allow user to check their own balance OR admin
-    if (req.user.role !== 'admin' && req.user.minecraftUsername !== username) {
+    const linkedMcName = resolveMinecraftUsername(req.user);
+    if (
+      req.user.role !== 'admin'
+      && linkedMcName.toLowerCase() !== username.toLowerCase()
+    ) {
       return res.status(403).json({ success: false, message: 'Không có quyền truy cập số dư này' });
     }
 
@@ -106,6 +110,13 @@ exports.checkPlayer = async (req, res) => {
     }
 
     console.log(`[MINECRAFT CONTROLLER] Check Player Request: ${playerName}`);
+
+    // Check if Minecraft username is already registered to another website account
+    const existingUser = await User.findOne({
+      minecraftUsername: { $regex: new RegExp(`^${playerName}$`, 'i') },
+    });
+    const isRegistered = !!existingUser;
+
     const result = await minecraftService.verifyPlayerExists(playerName);
 
     if (!result.exists) {
@@ -147,6 +158,7 @@ exports.checkPlayer = async (req, res) => {
       username: result.realName,
       balance,
       rank,
+      isRegistered,
       message: `Nhân vật ${result.realName} đã được xác nhận`
     });
   } catch (error) {
