@@ -1,6 +1,7 @@
 const StoreItem = require('../models/StoreItem');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
 // @desc    Get all store items
 // @route   GET /api/store
@@ -76,8 +77,18 @@ exports.purchaseItem = async (req, res) => {
 // @access  Private
 exports.getTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.json(transactions);
+    const linkedMcName = resolveMinecraftUsername(req.user);
+    const transactions = await Transaction.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const enriched = transactions.map((tx) => ({
+      ...tx,
+      playerName: tx.playerName || tx.minecraftUsername || linkedMcName,
+      minecraftUsername: tx.minecraftUsername || tx.playerName || linkedMcName,
+    }));
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

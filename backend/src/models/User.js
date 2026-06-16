@@ -73,7 +73,7 @@ const userSchema = new mongoose.Schema(
     },
     minecraftUsername: {
       type: String,
-      default: null,
+      default: '',
       index: {
         unique: true,
         partialFilterExpression: { minecraftUsername: { $type: 'string', $gt: '' } },
@@ -82,7 +82,7 @@ const userSchema = new mongoose.Schema(
     },
     minecraftVerified: {
       type: Boolean,
-      default: false,
+      default: true,
     },
   },
   {

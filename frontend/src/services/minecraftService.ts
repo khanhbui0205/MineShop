@@ -7,19 +7,13 @@ export interface MinecraftBalanceResponse {
   syncedAt?: string;
 }
 
-export interface PlayerVerificationResponse {
-  success: boolean;
-  playerExists: boolean;
-  username: string;
-  message: string;
-  error?: string;
-}
-
 export interface PlayerCheckResponse {
   success: boolean;
   playerExists: boolean;
   username: string;
   balance: number;
+  rank?: string;
+  isRegistered?: boolean;
   message: string;
   error?: string;
 }
@@ -35,32 +29,12 @@ const minecraftService = {
   },
 
   /**
-   * Xác thực player tồn tại trên server (yêu cầu đăng nhập).
-   * Dùng khi liên kết tài khoản Minecraft trong profile.
-   */
-  verifyPlayer: async (username: string): Promise<PlayerVerificationResponse> => {
-    const response = await api.post('/minecraft/verify', { username });
-    return response.data;
-  },
-
-  /**
-   * Kiểm tra nhanh player có tồn tại trên server không (KHÔNG cần đăng nhập).
-   * Dùng trong flow mua hàng để xác nhận tên player TRƯỚC khi tạo hóa đơn.
-   * Trả về cả realName (đúng hoa thường) và balance hiện tại.
+   * Kiểm tra player có tồn tại trên server không (dùng khi đăng ký).
    */
   checkPlayer: async (playerName: string): Promise<PlayerCheckResponse> => {
     const response = await api.post('/minecraft/check-player', { playerName });
     return response.data;
   },
-
-  /**
-   * Liên kết tài khoản Minecraft. Gọi userController.linkMinecraft ở backend.
-   * Backend sẽ verify player qua RCON trước khi lưu.
-   */
-  linkAccount: async (username: string) => {
-    const response = await api.post('/users/link-minecraft', { minecraftUsername: username });
-    return response.data;
-  }
 };
 
 export default minecraftService;

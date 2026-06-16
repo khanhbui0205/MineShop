@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const minecraftService = require('../services/minecraftService');
+const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
 // @desc    Get current user profile
 // @route   GET /api/users/profile
@@ -8,12 +9,14 @@ exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).lean();
     if (user) {
+      const minecraftUsername = resolveMinecraftUsername(user);
+
       // Sync balance & rank from Minecraft Server if username is linked
-      if (user.minecraftUsername) {
+      if (minecraftUsername) {
         try {
           const [gameBalance, gameRank] = await Promise.all([
-            minecraftService.getPlayerBalance(user.minecraftUsername),
-            minecraftService.getPlayerRank(user.minecraftUsername)
+            minecraftService.getPlayerBalance(minecraftUsername),
+            minecraftService.getPlayerRank(minecraftUsername)
           ]);
           user.balance = gameBalance;
           user.rank = gameRank; // Overwrite for real-time display
@@ -21,7 +24,22 @@ exports.getProfile = async (req, res) => {
           console.warn('[PROFILE] Failed to fetch game data:', err.message);
         }
       }
-      res.json(user);
+
+      res.json({
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        balance: user.balance,
+        totalDeposited: user.totalDeposited,
+        rank: user.rank,
+        battlePassLevel: user.battlePassLevel,
+        battlePassXp: user.battlePassXp,
+        minecraftUsername,
+        minecraftVerified: user.minecraftVerified ?? Boolean(minecraftUsername),
+        isBanned: user.isBanned,
+        createdAt: user.createdAt,
+      });
     } else {
       res.status(404).json({ message: 'User not found' });
     }
@@ -63,77 +81,6 @@ exports.deposit = async (req, res) => {
     res.json({ message: 'Deposit successful', balance: user.balance, totalDeposited: user.totalDeposited });
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Link Minecraft account
-// @route   POST /api/users/link-minecraft
-// @access  Private
-exports.linkMinecraft = async (req, res) => {
-  try {
-    const { minecraftUsername } = req.body;
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
-    }
-
-    if (!minecraftUsername) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên nhân vật' });
-    }
-
-    // Requirement 2 & 3: Check if this username is already linked TO ANOTHER ACCOUNT
-    // Case-insensitive check
-    const existingUser = await User.findOne({ 
-      minecraftUsername: { $regex: new RegExp(`^${minecraftUsername}$`, 'i') } 
-    });
-
-    if (existingUser && existingUser._id.toString() !== user._id.toString()) {
-      return res.status(400).json({
-        success: false,
-        error: "USERNAME_ALREADY_REGISTERED",
-        message: "Tên nhân vật này đã được liên kết với tài khoản khác."
-      });
-    }
-
-    // Requirement 4: Verify existence directly in server via RCON
-    const verification = await minecraftService.verifyPlayerExists(minecraftUsername);
-    if (!verification.exists) {
-      return res.status(404).json({ 
-        success: false,
-        error: "PLAYER_NOT_FOUND",
-        message: 'Nhân vật không tồn tại trong server.' 
-      });
-    }
-
-    // Save with exact casing from server
-    user.minecraftUsername = verification.realName || minecraftUsername;
-    user.minecraftVerified = true;
-    await user.save();
-
-    // Fetch initial balance & rank
-    const [balance, rank] = await Promise.all([
-      minecraftService.getPlayerBalance(user.minecraftUsername),
-      minecraftService.getPlayerRank(user.minecraftUsername)
-    ]);
-
-    res.json({ 
-      success: true,
-      message: 'Liên kết tài khoản Minecraft thành công', 
-      minecraftUsername: user.minecraftUsername,
-      minecraftVerified: user.minecraftVerified,
-      balance,
-      rank
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "USERNAME_ALREADY_REGISTERED",
-        message: 'Tên nhân vật này đã được liên kết với tài khoản khác.' 
-      });
-    }
-    res.status(500).json({ success: false, message: error.message });
   }
 };
 

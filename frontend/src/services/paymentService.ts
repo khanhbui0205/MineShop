@@ -28,8 +28,8 @@ export interface PaymentTransaction {
 }
 
 const paymentService = {
-  createPayment: async (packageId: string, playerName: string): Promise<CreatePaymentResponse> => {
-    const response = await http.post('/payment/create', { packageId, playerName });
+  createPayment: async (packageId: string): Promise<CreatePaymentResponse> => {
+    const response = await http.post('/payment/create', { packageId });
     return response.data;
   },
 

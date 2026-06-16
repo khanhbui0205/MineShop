@@ -70,10 +70,10 @@ export default function SuccessPage() {
             <span className="text-slate-400 font-bold uppercase tracking-wider">Mã đơn hàng</span>
             <span className="text-slate-900 font-mono font-black">#{transaction.orderCode}</span>
           </div>
-          {transaction.playerName && (
+          {(transaction.playerName || transaction.minecraftUsername) && (
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-400 font-bold uppercase tracking-wider">Nhân vật Minecraft</span>
-              <span className="text-indigo-600 font-black">{transaction.playerName}</span>
+              <span className="text-indigo-600 font-black">{transaction.playerName || transaction.minecraftUsername}</span>
             </div>
           )}
           <div className="flex justify-between items-center text-xs">

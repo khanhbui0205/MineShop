@@ -8,6 +8,7 @@ const PaymentConfig = require('../models/PaymentConfig');
 const PackageExecutionLog = require('../models/PackageExecutionLog');
 const rconService = require('../services/rconService');
 const { processSuccessfulPayment } = require('../services/paymentProcessingService');
+const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
 // Utility to get PayOS instance
 const getPayOSInstance = async () => {
@@ -27,15 +28,11 @@ const getPayOSInstance = async () => {
 // @access  Private
 exports.createPayment = async (req, res) => {
   try {
-    let { packageId, playerName } = req.body;
-    
-    // Requirement 7: If user has linked minecraft account, force use it
-    if (req.user.minecraftUsername && req.user.minecraftUsername !== '') {
-      playerName = req.user.minecraftUsername;
-    }
-    
+    const { packageId } = req.body;
+    let playerName = resolveMinecraftUsername(req.user);
+
     if (!playerName) {
-      return res.status(400).json({ message: 'Vui lòng liên kết tài khoản Minecraft trước khi thanh toán' });
+      return res.status(400).json({ message: 'Tài khoản chưa có Minecraft Username đã xác minh.' });
     }
 
     // ── STEP 0: MANDATORY Player Verification via RCON ─────────────────────────
@@ -142,7 +139,7 @@ exports.createPayment = async (req, res) => {
       qrCode: paymentLinkRes.qrCode || '',
       status: 'pending',
       playerName: playerName,
-      minecraftUsername: req.user.minecraftUsername || playerName,
+      minecraftUsername: playerName,
       accountNumber: paymentLinkRes.accountNumber,
       accountName: paymentLinkRes.accountName,
       description: paymentLinkRes.description || body.description, // Use the description returned by PayOS or fallback to body.description
@@ -427,16 +424,23 @@ exports.getPaymentHistory = async (req, res) => {
     }
 
     const skip = (page - 1) * limit;
+    const linkedMcName = resolveMinecraftUsername(req.user);
     const transactions = await Transaction.find(query)
       .populate('package', 'name price')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
 
     const total = await Transaction.countDocuments(query);
+    const enriched = transactions.map((tx) => ({
+      ...tx,
+      playerName: tx.playerName || tx.minecraftUsername || linkedMcName,
+      minecraftUsername: tx.minecraftUsername || tx.playerName || linkedMcName,
+    }));
 
     res.json({
-      transactions,
+      transactions: enriched,
       page: Number(page),
       totalPages: Math.ceil(total / limit),
       total,
@@ -453,7 +457,7 @@ exports.getPaymentById = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id)
       .populate('package')
-      .populate('user', 'username');
+      .populate('user', 'username minecraftUsername');
     
     if (!transaction) {
       return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
@@ -463,7 +467,12 @@ exports.getPaymentById = async (req, res) => {
       return res.status(403).json({ message: 'Không có quyền truy cập' });
     }
 
-    res.json(transaction);
+    const linkedMcName = resolveMinecraftUsername(transaction.user);
+    const payload = transaction.toObject();
+    payload.playerName = payload.playerName || payload.minecraftUsername || linkedMcName;
+    payload.minecraftUsername = payload.minecraftUsername || payload.playerName || linkedMcName;
+
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

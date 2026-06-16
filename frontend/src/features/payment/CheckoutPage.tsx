@@ -232,10 +232,10 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Player Info - Realtime */}
+                  {/* Delivery destination */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Nhân vật</span>
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Deliver To</span>
                       <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                         <span className="text-xs font-bold text-indigo-700">
                           {transaction.minecraftUsername || transaction.playerName || '—'}
