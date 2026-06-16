@@ -8,7 +8,7 @@ const { resolveMinecraftUsername } = require('../utils/userHelpers');
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { username, email, phoneNumber, password, minecraftUsername: mcUsernameInput } = req.body;
+    const { username, email, password, minecraftUsername: mcUsernameInput } = req.body;
     const minecraftUsername = (mcUsernameInput || username || '').trim();
 
     // Validation: username
@@ -24,14 +24,6 @@ exports.register = async (req, res) => {
     const emailRegex = /^\S+@\S+\.\S+$/;
     if (!email || !emailRegex.test(email)) {
       return res.status(400).json({ message: 'Định dạng email không hợp lệ' });
-    }
-
-    // Validation: phone (nếu có)
-    if (phoneNumber && phoneNumber.trim()) {
-      const vnPhoneRegex = /^(0|\+84)(3[2-9]|5[6-9]|7[0-9]|8[1-9]|9[0-9])[0-9]{7}$/;
-      if (!vnPhoneRegex.test(phoneNumber.trim())) {
-        return res.status(400).json({ message: 'Số điện thoại không đúng định dạng Việt Nam' });
-      }
     }
 
     // Validation: password
@@ -89,7 +81,6 @@ exports.register = async (req, res) => {
     const user = await User.create({
       username: username.trim(),
       email: email.trim().toLowerCase(),
-      phoneNumber: phoneNumber ? phoneNumber.trim() : '',
       password,
       minecraftUsername: verifiedMcName,
       minecraftVerified: true,
@@ -100,7 +91,6 @@ exports.register = async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
-        phoneNumber: user.phoneNumber,
         role: user.role,
         balance: user.balance,
         minecraftUsername: user.minecraftUsername,
@@ -184,7 +174,6 @@ exports.login = async (req, res) => {
       _id: user._id,
       username: user.username,
       email: user.email,
-      phoneNumber: user.phoneNumber,
       role: user.role,
       balance: user.balance,
       totalDeposited: user.totalDeposited,
@@ -216,7 +205,6 @@ exports.getMe = async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
-        phoneNumber: user.phoneNumber,
         role: user.role,
         balance: user.balance,
         totalDeposited: user.totalDeposited,

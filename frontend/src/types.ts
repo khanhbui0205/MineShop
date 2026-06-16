@@ -22,7 +22,6 @@ export interface Transaction {
 export interface UserProfile {
   username: string;
   email: string;
-  phoneNumber?: string;
   balance: number;
   totalDeposited: number;
   rank: string;
@@ -77,7 +76,6 @@ export interface Player {
   name: string;
   username?: string;
   email: string;
-  phoneNumber?: string;
   avatarUrl?: string;
   status: 'Online' | 'Offline' | 'Banned';
   isBanned: boolean;

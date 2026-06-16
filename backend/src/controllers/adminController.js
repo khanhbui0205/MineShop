@@ -258,7 +258,6 @@ exports.getUsers = async (req, res) => {
           $or: [
             { username: { $regex: search, $options: 'i' } },
             { email: { $regex: search, $options: 'i' } },
-            { phoneNumber: { $regex: search, $options: 'i' } },
             { minecraftUsername: { $regex: search, $options: 'i' } },
           ],
         }

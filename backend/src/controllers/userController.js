@@ -29,7 +29,6 @@ exports.getProfile = async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
-        phoneNumber: user.phoneNumber,
         role: user.role,
         balance: user.balance,
         totalDeposited: user.totalDeposited,

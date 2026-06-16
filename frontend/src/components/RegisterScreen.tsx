@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video, Phone, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import api from '../lib/api';
@@ -17,7 +17,6 @@ interface RegisterScreenProps {
 export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }: RegisterScreenProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,14 +32,11 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   
-  const isPhoneValid = phoneNumber.length === 0 || /^(0|\+84)(3[2-9]|5[6-9]|7[0-9]|8[1-9]|9[0-9])[0-9]{7}$/.test(phoneNumber);
-
   const isFormValid = 
     username.trim().length >= 3 && 
     email.includes('@') && 
     hasMinLength && 
     hasUppercase && 
-    isPhoneValid &&
     password === confirmPassword && 
     agreeTerms &&
     isVerified;
@@ -89,7 +85,6 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
       await api.post('/auth/register', {
         username: username.trim(),
         email: email.trim(),
-        phoneNumber: phoneNumber.trim(),
         password,
         minecraftUsername: username.trim(),
       });
@@ -220,27 +215,6 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300"
                   />
                 </div>
-              </div>
-
-              {/* Phone Input */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase" htmlFor="reg-phone">
-                  Số điện thoại
-                </label>
-                <div className="relative group">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
-                    <Phone className="w-4 h-4" />
-                  </span>
-                  <input 
-                    id="reg-phone"
-                    type="text"
-                    placeholder="09xx xxx xxx"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className={`w-full bg-slate-50 border ${!isPhoneValid ? 'border-red-500' : 'border-slate-200'} rounded-lg py-3 pl-10 pr-4 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300`}
-                  />
-                </div>
-                {!isPhoneValid && <p className="text-[10px] text-red-500 font-medium">SĐT không hợp lệ (Ví dụ: 0912345678)</p>}
               </div>
 
               {/* Password Input */}

@@ -66,7 +66,6 @@ export default function UsersAdmin({
         name: u.username,
         username: u.username,
         email: u.email,
-        phoneNumber: u.phoneNumber || '',
         avatarUrl: `https://api.dicebear.com/7.x/identicon/svg?seed=${u.username}`,
         status: u.isBanned ? 'Banned' : 'Offline',
         isBanned: u.isBanned,
@@ -183,7 +182,7 @@ export default function UsersAdmin({
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo email, Minecraft username hoặc số điện thoại..."
+            placeholder="Tìm theo email hoặc Minecraft username..."
             className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
           />
         </div>
@@ -391,7 +390,6 @@ export default function UsersAdmin({
                 <div>
                   <h4 className="font-bold text-white text-base">{selectedPlayer.name}</h4>
                   <p className="text-xs text-slate-400">{selectedPlayer.email}</p>
-                  {selectedPlayer.phoneNumber && <p className="text-xs text-slate-400">{selectedPlayer.phoneNumber}</p>}
                   <p className="text-[10px] text-slate-500 font-mono mt-1">ID: {selectedPlayer.id}</p>
                 </div>
               </div>

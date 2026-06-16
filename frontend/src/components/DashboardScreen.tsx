@@ -63,7 +63,6 @@ function mapProfileData(data: any): UserProfile {
     battlePassXp: data.battlePassXp ?? 0,
     minecraftUsername,
     minecraftVerified: data.minecraftVerified ?? Boolean(minecraftUsername),
-    phoneNumber: data.phoneNumber,
     role: data.role,
   };
 }
@@ -1151,7 +1150,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="flex items-center justify-between py-2 border-b border-slate-50">
                       <div>
                         <span className="block font-bold text-slate-800">Xác thực 2 lớp (2FA)</span>
-                        <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Bảo mật mã OTP qua điện thoại</span>
+                        <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Bảo mật mã OTP qua email</span>
                       </div>
                       <input 
                         type="checkbox" 
