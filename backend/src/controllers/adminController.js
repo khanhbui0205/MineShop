@@ -42,16 +42,13 @@ const getPackageFinalPrice = (pkg) => {
 };
 const getPackagePromotionBadgeText = (pkg) => {
   const promotionType = getPackagePromotionType(pkg);
-  const promotionPercent = getPackagePromotionPercent(pkg);
-  if (promotionPercent > 0) {
-    return `+${promotionPercent}% Coins`;
-  }
-  if (promotionType === 'bonus_coin') {
-    return promotionPercent > 0 ? `+${promotionPercent}% Coins` : '';
-  }
   if (promotionType === 'discount') {
     const discountPercent = getPackageDiscountPercent(pkg);
     return discountPercent > 0 ? `OFF -${discountPercent}%` : '';
+  }
+  if (promotionType === 'bonus_coin') {
+    const promotionPercent = getPackagePromotionPercent(pkg);
+    return promotionPercent > 0 ? `+${promotionPercent}% Coins` : '';
   }
   return '';
 };
@@ -580,6 +577,22 @@ exports.getPublicPackages = async (req, res) => {
   try {
     const packages = await Package.find({ isVisible: true }).sort({ price: 1 });
     res.json(packages.map(serializePackage));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get visible package detail (Public)
+// @route   GET /api/packages/:id
+// @access  Public
+exports.getPublicPackageById = async (req, res) => {
+  try {
+    const pkg = await Package.findOne({ _id: req.params.id, isVisible: true });
+    if (!pkg) {
+      return res.status(404).json({ message: 'Package not found' });
+    }
+
+    res.json(serializePackage(pkg));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

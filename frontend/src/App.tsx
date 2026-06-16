@@ -76,7 +76,11 @@ export default function App() {
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-900 font-sans overflow-x-hidden">
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ zIndex: 9999 }}
+        toastOptions={{ style: { zIndex: 9999 } }}
+      />
       <Routes>
         {/* Public Routes */}
         <Route 

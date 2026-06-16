@@ -37,13 +37,16 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { createPortal } from 'react-dom';
 import type { Transaction, UserProfile, StoreItem, PortalTab } from '../types';
 import api from '../lib/api';
 import { formatVND } from '../lib/utils';
+import { getPromotionBadge } from '../lib/promotions';
 import { useLocation, useNavigate } from 'react-router-dom';
 import paymentService from '../services/paymentService';
 import type { MonthlyTopDonator } from '../services/paymentService';
 import minecraftService from '../services/minecraftService';
+import PromotionBadge from './PromotionBadge';
 
 
 interface DashboardScreenProps {
@@ -105,13 +108,12 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           const discountPercent = promotionType === 'discount' ? Number(pkg.discountPercent ?? 0) : 0;
           const originalPrice = Number(pkg.originalPrice ?? pkg.price ?? 0);
           const finalPrice = Number(pkg.finalPrice ?? (discountPercent > 0 ? Math.round(originalPrice - (originalPrice * discountPercent) / 100) : originalPrice));
-          const promotionBadgeText = pkg.promotionBadgeText || (
-            promotionType === 'bonus_coin' && promotionPercent > 0
-              ? `+${promotionPercent}% Coins`
-              : promotionType === 'discount' && discountPercent > 0
-                ? `OFF -${discountPercent}%`
-                : ''
-          );
+          const promotionBadgeText = getPromotionBadge({
+            promotionType,
+            discountPercent,
+            bonusCoins,
+            baseCoins,
+          })?.text ?? '';
           return {
             id: pkg._id,
             _id: pkg._id,
@@ -181,6 +183,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   // New: Package Detail Modal
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<StoreItem | null>(null);
+  const [detailModalStep, setDetailModalStep] = useState<'detail' | 'player-check'>('detail');
 
   // Helper function to trigger interactive popups
   const triggerNotification = (message: string, type: 'success' | 'refuse' = 'success') => {
@@ -191,6 +194,9 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   const linkedMcName = userProfile.minecraftUsername || userProfile.username;
   const monthlyTopByRank = new Map(monthlyTopDonators.map((donator) => [donator.rank, donator]));
   const formatTopAmount = (amount: number) => `${new Intl.NumberFormat('vi-VN').format(amount)} VND`;
+  const getItemBaseCoins = (item?: StoreItem | null) => Number(item?.baseCoins ?? item?.coinAmount ?? 0);
+  const getItemBonusCoins = (item?: StoreItem | null) => Number(item?.bonusCoins ?? item?.bonusCoin ?? 0);
+  const getItemTotalCoins = (item?: StoreItem | null) => getItemBaseCoins(item) + getItemBonusCoins(item);
 
   // Requirement 5: Auto refresh balance helper
   const refreshBalance = useCallback(async () => {
@@ -232,6 +238,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   const handlePurchaseItem = (item: StoreItem) => {
     // Show details first
     setSelectedDetail(item);
+    setDetailModalStep('detail');
     setShowDetailModal(true);
   };
 
@@ -250,6 +257,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     setVerifyError('');
   };
 
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setDetailModalStep('detail');
+    setPlayerConfirmed(false);
+    setVerifyError('');
+  };
+
   const handleVerifyPlayer = async () => {
     if (!linkedMcName || isVerifyingPlayer) return;
 
@@ -259,18 +273,23 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
       const res = await minecraftService.getPlayerBalance(linkedMcName);
       if (res.success) {
         setPlayerConfirmed(true);
-        triggerNotification(`Đã xác nhận nhân vật: ${res.username}`, 'success');
+        triggerNotification('Kiểm tra player thành công', 'success');
       }
     } catch (error: any) {
       setPlayerConfirmed(false);
-      setVerifyError(error.response?.data?.message || 'Không thể xác nhận nhân vật trên server.');
+      const message = error.response?.data?.error === 'PLAYER_NOT_FOUND'
+        ? 'Không tìm thấy player'
+        : (error.response?.data?.message || 'Không tìm thấy player');
+      setVerifyError(message);
+      triggerNotification(message, 'refuse');
     } finally {
       setIsVerifyingPlayer(false);
     }
   };
 
-  const handleConfirmPurchase = async () => {
-    if (!selectedPackage) return;
+  const handleConfirmPurchase = async (packageOverride?: StoreItem) => {
+    const packageToBuy = packageOverride || selectedPackage;
+    if (!packageToBuy) return;
 
     if (!linkedMcName) {
       triggerNotification('Tài khoản chưa có Minecraft Username đã xác minh.', 'refuse');
@@ -285,7 +304,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     try {
       setIsPurchasing(true);
       const response = await paymentService.createPayment(
-        selectedPackage.id || (selectedPackage as any)._id
+        packageToBuy.id || (packageToBuy as any)._id
       );
       navigate(`/payment/checkout/${response.transactionId}`);
     } catch (error: any) {
@@ -300,27 +319,30 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     <div className="flex bg-slate-50 text-slate-800 min-h-screen text-sm font-sans flex-col md:flex-row relative">
       
       {/* Floating Dynamic status toast */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -40, x: '-50%' }}
-            className={`fixed top-6 left-1/2 z-50 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border ${
-              notification.type === 'success' 
-              ? 'bg-indigo-600 text-white border-indigo-500/20 font-semibold' 
-              : 'bg-red-600 text-white border-red-500/20'
-            }`}
-          >
-            {notification.type === 'success' ? (
-              <Sparkles className="w-5 h-5 animate-bounce text-yellow-300" />
-            ) : (
-              <X className="w-5 h-5 text-red-100" />
-            )}
-            <span>{notification.message}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -50, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: -40, x: '-50%' }}
+              className={`fixed top-6 left-1/2 z-[9999] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border ${
+                notification.type === 'success'
+                ? 'bg-indigo-600 text-white border-indigo-500/20 font-semibold'
+                : 'bg-red-600 text-white border-red-500/20'
+              }`}
+            >
+              {notification.type === 'success' ? (
+                <Sparkles className="w-5 h-5 animate-bounce text-yellow-300" />
+              ) : (
+                <X className="w-5 h-5 text-red-100" />
+              )}
+              <span>{notification.message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* SideNavBar - Persistent on Desktop */}
       <nav className="hidden md:flex bg-slate-900 fixed left-0 top-0 h-full w-64 border-r border-slate-800 shadow-2xl flex-col py-8 z-40 justify-between">
@@ -947,15 +969,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredStoreItems.map((item) => {
                     const isPurchasable = item.currency === 'USD' || userProfile.balance >= item.price;
-                    const promotionPercent = Number(item.promotionPercent || 0);
                     const discountPercent = Number(item.discountPercent || 0);
                     const promotionType = item.promotionType || 'none';
-                    const baseCoins = Number(item.baseCoins ?? item.coinAmount ?? 0);
-                    const bonusCoins = Number(item.bonusCoins ?? item.bonusCoin ?? 0);
-                    const totalCoins = baseCoins + bonusCoins;
-                    const hasBonusPromotion = item.type === 'Coins' && bonusCoins > 0 && promotionPercent > 0;
+                    const baseCoins = getItemBaseCoins(item);
+                    const bonusCoins = getItemBonusCoins(item);
+                    const totalCoins = getItemTotalCoins(item);
+                    const promotionBadge = getPromotionBadge(item);
                     const hasDiscountPromotion = item.type === 'Coins' && promotionType === 'discount' && discountPercent > 0;
-                    const hasPromotion = hasBonusPromotion;
                     const originalPrice = Number(item.originalPrice ?? item.price);
                     const finalPrice = Number(item.finalPrice ?? item.price);
                     return (
@@ -968,15 +988,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                             : 'bg-white border-slate-200/80 hover:border-indigo-300 shadow-md'
                         }`}
                       >
-                        {hasPromotion && (
-                          <span
-                            className={`promo-badge absolute top-3 right-3 z-20 inline-flex items-center justify-center gap-1 whitespace-nowrap px-3 py-1.5 text-[12px] sm:text-[13px] font-extrabold uppercase tracking-tight transition-transform duration-200 group-hover:scale-[1.08] ${
-                              'promo-badge-bonus'
-                            }`}
-                          >
-                            {`+${promotionPercent}% Coins`}
-                          </span>
-                        )}
+                        <PromotionBadge
+                          badge={promotionBadge}
+                          className="transition-transform duration-200 group-hover:scale-[1.08]"
+                        />
 
                         <div className="space-y-4">
                           {/* Award icon mapping block with dynamic colors */}
@@ -1386,35 +1401,40 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+              className="relative z-[1010] bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
             >
-              <div className="relative h-48 bg-slate-900 overflow-hidden shrink-0">
-                <img 
-                  src={selectedDetail.image || 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?auto=format&fit=crop&q=80&w=800'} 
-                  className="w-full h-full object-cover opacity-60" 
-                  alt={selectedDetail.name} 
+              <div className="relative min-h-40 bg-[linear-gradient(135deg,#111827,#1f2937)] overflow-hidden shrink-0 px-8 py-8">
+                <PromotionBadge
+                  badge={getPromotionBadge(selectedDetail)}
+                  style={{ top: 16, right: 64, maxWidth: 'calc(100% - 104px)' }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
                 <button 
-                  onClick={() => setShowDetailModal(false)}
-                  className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-xl transition-colors backdrop-blur-md"
+                  onClick={closeDetailModal}
+                  className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors backdrop-blur-md"
                 >
                   <X size={20} />
                 </button>
-                <div className="absolute bottom-6 left-8">
+                <div className="pr-12">
                   <span className="px-3 py-1 bg-indigo-600 text-[10px] font-black text-white rounded-full uppercase tracking-widest mb-2 inline-block">
                     {selectedDetail.category || selectedDetail.type}
                   </span>
                   <h3 className="text-3xl font-black text-white uppercase tracking-tight">{selectedDetail.name}</h3>
+                  {detailModalStep === 'player-check' && (
+                    <p className="text-xs text-slate-300 mt-2 font-semibold uppercase tracking-wider">
+                      Kiểm tra player Minecraft
+                    </p>
+                  )}
                 </div>
               </div>
 
+              {detailModalStep === 'detail' ? (
+              <>
               <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
@@ -1434,18 +1454,22 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-slate-500">Giá trị thực tế</span>
-                        <span className="text-sm font-black text-slate-900">{(selectedDetail.baseCoins ?? selectedDetail.coinAmount ?? 0).toLocaleString()} Xu</span>
+                        <span className="text-sm font-black text-slate-900">{getItemBaseCoins(selectedDetail).toLocaleString()} Xu</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-emerald-600">Thưởng kèm theo</span>
-                        <span className="text-sm font-black text-emerald-600">+{(selectedDetail.bonusCoins ?? selectedDetail.bonusCoin ?? 0).toLocaleString()} Xu</span>
-                      </div>
-                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-100">
-                        <span className="text-xs font-bold text-indigo-600">Tổng cộng nhận</span>
-                        <span className="text-sm font-black text-indigo-600">
-                          {((selectedDetail.baseCoins ?? selectedDetail.coinAmount ?? 0) + (selectedDetail.bonusCoins ?? selectedDetail.bonusCoin ?? 0)).toLocaleString()} Xu
-                        </span>
-                      </div>
+                      {getItemBonusCoins(selectedDetail) > 0 && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-emerald-600">Thưởng kèm theo</span>
+                            <span className="text-sm font-black text-emerald-600">+{getItemBonusCoins(selectedDetail).toLocaleString()} Xu</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-100">
+                            <span className="text-xs font-bold text-indigo-600">Tổng cộng nhận</span>
+                            <span className="text-sm font-black text-indigo-600">
+                              {getItemTotalCoins(selectedDetail).toLocaleString()} Xu
+                            </span>
+                          </div>
+                        </>
+                      )}
                       <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
                         <span className="text-[10px] font-black text-slate-400 uppercase">Giá thanh toán</span>
                         <span className="text-xl font-black text-indigo-600">{formatVND(selectedDetail.price)}</span>
@@ -1499,18 +1523,17 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0">
                 <button 
-                  onClick={() => setShowDetailModal(false)}
+                  onClick={closeDetailModal}
                   className="flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
                 >
                   Đóng
                 </button>
                 <button 
-                   onClick={() => {
+                  onClick={() => {
                     setSelectedPackage(selectedDetail);
-                    setShowDetailModal(false);
                     setPlayerConfirmed(false);
                     setVerifyError('');
-                    setShowPurchaseModal(true);
+                    setDetailModalStep('player-check');
                   }}
                   className="flex-[2] py-3.5 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-200 hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
                 >
@@ -1518,6 +1541,96 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   Thanh toán ngay
                 </button>
               </div>
+              </>
+              ) : (
+              <>
+                <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Giá thanh toán</span>
+                      <span className="text-lg font-black text-slate-900 font-mono">{formatVND(selectedDetail.price)}</span>
+                    </div>
+                    <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                      <span className="text-[10px] text-indigo-400 font-bold uppercase block mb-1">Xu nhận được</span>
+                      <div className="flex items-center gap-1.5">
+                        <Coins className="w-4 h-4 text-indigo-600" />
+                        <span className="text-lg font-black text-indigo-600 font-mono">
+                          {getItemTotalCoins(selectedDetail).toLocaleString()} Xu
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-2">
+                      <Users className="w-4 h-4 text-indigo-600" />
+                      Player Minecraft
+                    </label>
+                    <div className={`flex items-center gap-3 rounded-xl py-3 px-4 shadow-sm border ${
+                      playerConfirmed
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : 'bg-slate-50 border-indigo-100'
+                    }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        playerConfirmed ? 'bg-emerald-100' : 'bg-indigo-100'
+                      }`}>
+                        {playerConfirmed
+                          ? <CheckCircle className="w-4 h-4 text-emerald-600" />
+                          : <Users className="w-4 h-4 text-indigo-600" />
+                        }
+                      </div>
+                      <span className="text-sm font-black text-slate-900 flex-1">{linkedMcName}</span>
+                      {playerConfirmed && (
+                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Đã xác nhận</span>
+                      )}
+                    </div>
+
+                    {!playerConfirmed && (
+                      <button
+                        type="button"
+                        onClick={handleVerifyPlayer}
+                        disabled={isVerifyingPlayer || !linkedMcName}
+                        className="w-full py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider hover:bg-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      >
+                        {isVerifyingPlayer ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                        {isVerifyingPlayer ? 'Đang kiểm tra...' : 'Kiểm tra player'}
+                      </button>
+                    )}
+
+                    {verifyError && (
+                      <p className="text-[10px] text-rose-500 font-medium">{verifyError}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0">
+                  <button
+                    onClick={() => {
+                      setDetailModalStep('detail');
+                      setPlayerConfirmed(false);
+                      setVerifyError('');
+                    }}
+                    className="flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
+                  >
+                    Quay lại
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedPackage(selectedDetail);
+                      handleConfirmPurchase(selectedDetail);
+                    }}
+                    disabled={isPurchasing || !linkedMcName || !playerConfirmed}
+                    className={`flex-[2] py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                      !isPurchasing && linkedMcName && playerConfirmed
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-slate-900'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {isPurchasing ? 'Đang xử lý...' : 'Tiếp tục thanh toán'}
+                  </button>
+                </div>
+              </>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -1540,6 +1653,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             >
               {/* Header with Image/Icon */}
               <div className="relative h-40 bg-indigo-600 flex items-center justify-center">
+                <PromotionBadge
+                  badge={getPromotionBadge(selectedPackage)}
+                  style={{ left: 14, right: 'auto' }}
+                />
                 <div className="absolute inset-0 opacity-20">
                   <div className="w-full h-full bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]" />
                 </div>
@@ -1573,7 +1690,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="flex items-center gap-1.5">
                       <Coins className="w-4 h-4 text-indigo-600" />
                       <span className="text-lg font-black text-indigo-600 font-mono">
-                        {((selectedPackage.baseCoins ?? selectedPackage.coinAmount ?? 0) + (selectedPackage.bonusCoins ?? selectedPackage.bonusCoin ?? 0)).toLocaleString()} Xu
+                        {getItemTotalCoins(selectedPackage).toLocaleString()} Xu
                       </span>
                     </div>
                   </div>
@@ -1647,7 +1764,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     </button>
                     <button
                       type="button"
-                      onClick={handleConfirmPurchase}
+                      onClick={() => handleConfirmPurchase()}
                       disabled={isPurchasing || !linkedMcName || !playerConfirmed}
                       className={`flex-1 py-4 rounded-2xl font-display font-bold uppercase tracking-widest transition-all cursor-pointer text-xs shadow-lg ${
                         !isPurchasing && linkedMcName && playerConfirmed
