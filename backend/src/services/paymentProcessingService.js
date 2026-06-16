@@ -121,11 +121,7 @@ function validateWebhookData(data, transaction) {
     throw new Error('Webhook orderCode is invalid');
   }
 
-  if (!transaction) {
-    throw new Error(`Transaction not found for orderCode ${orderCode}`);
-  }
-
-  if (Number(data.amount) !== Number(transaction.amount)) {
+  if (transaction && Number(data.amount) !== Number(transaction.amount)) {
     throw new Error(`Webhook amount mismatch for orderCode ${orderCode}`);
   }
 }
