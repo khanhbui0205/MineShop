@@ -60,7 +60,9 @@ export default function UsersAdmin({
       const res = await api.get(`/admin/users?${params}`);
       const data = res.data;
 
-      const mapped: Player[] = data.users.map((u: any) => ({
+      const mapped: Player[] = data.users.map((u: any) => {
+        const minecraftUsername = u.minecraftUsername || u.username || '';
+        return {
         id: u._id,
         _id: u._id,
         name: u.username,
@@ -74,15 +76,16 @@ export default function UsersAdmin({
         rank: u.rank || 'Member',
         donated: u.totalDeposited || 0,
         balance: u.balance || 0,
-        minecraftUsername: u.minecraftUsername || '',
-        minecraftVerified: u.minecraftVerified || false,
+        minecraftUsername,
+        minecraftVerified: u.minecraftVerified ?? Boolean(minecraftUsername),
         minecraftLastSync: u.minecraftLastSync,
         role: u.role,
         lastActive: u.lastLoginAt
           ? new Date(u.lastLoginAt).toLocaleDateString('vi-VN')
           : (u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '—'),
         createdAt: u.createdAt,
-      }));
+      };
+      });
 
       setPlayers(mapped);
       setTotal(data.total);
