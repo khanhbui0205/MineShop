@@ -4,6 +4,7 @@ const Package = require('../models/Package');
 const PaymentConfig = require('../models/PaymentConfig');
 const bcrypt = require('bcryptjs');
 const minecraftService = require('../services/minecraftService');
+const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
 // ─── DASHBOARD STATS ──────────────────────────────────────────────────────────
 
@@ -275,18 +276,25 @@ exports.getUsers = async (req, res) => {
 
     // Sync balances and ranks from Minecraft server
     const users = await Promise.all(usersRaw.map(async (u) => {
-      if (u.minecraftUsername) {
+      const minecraftUsername = resolveMinecraftUsername(u);
+      const enriched = {
+        ...u,
+        minecraftUsername,
+        minecraftVerified: u.minecraftVerified ?? Boolean(minecraftUsername),
+      };
+
+      if (minecraftUsername) {
         try {
           const [gameBalance, gameRank] = await Promise.all([
-            minecraftService.getPlayerBalance(u.minecraftUsername),
-            minecraftService.getPlayerRank(u.minecraftUsername),
+            minecraftService.getPlayerBalance(minecraftUsername),
+            minecraftService.getPlayerRank(minecraftUsername),
           ]);
-          return { ...u, balance: gameBalance, rank: gameRank };
+          return { ...enriched, balance: gameBalance, rank: gameRank };
         } catch (err) {
-          return u;
+          return enriched;
         }
       }
-      return u;
+      return enriched;
     }));
 
     res.json({
@@ -308,17 +316,21 @@ exports.getUserById = async (req, res) => {
     const user = await User.findById(req.params.id).select('-password').lean();
     if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     
+    const minecraftUsername = resolveMinecraftUsername(user);
+    user.minecraftUsername = minecraftUsername;
+    user.minecraftVerified = user.minecraftVerified ?? Boolean(minecraftUsername);
+
     // Show real-time balance, rank and sync info
-    if (user.minecraftUsername) {
+    if (minecraftUsername) {
       try {
         const [gameBalance, gameRank] = await Promise.all([
-          minecraftService.getPlayerBalance(user.minecraftUsername),
-          minecraftService.getPlayerRank(user.minecraftUsername),
+          minecraftService.getPlayerBalance(minecraftUsername),
+          minecraftService.getPlayerRank(minecraftUsername),
         ]);
         user.balance = gameBalance;
         user.rank = gameRank;
 
-        const cached = minecraftService.balanceCache.get(user.minecraftUsername);
+        const cached = minecraftService.balanceCache.get(minecraftUsername);
         user.minecraftLastSync = cached ? new Date(cached.timestamp) : new Date();
       } catch (err) {
         console.warn('Admin fetch balance error:', err.message);
