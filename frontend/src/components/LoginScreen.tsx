@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { LogIn, Lock, User, Swords, MessageSquare, Share2, AtSign, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Lock, User, MessageSquare, Share2, AtSign, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import api from '../lib/api';
@@ -78,10 +78,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
           {/* Main Card (Crisp White Card with Slate Shadows) */}
           <div className="bg-white rounded-2xl p-8 md:p-10 flex flex-col gap-8 shadow-2xl border border-slate-200/80">
             
-            {/* Swords logo header */}
+            {/* Logo header */}
             <div className="text-center flex flex-col items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100 border border-indigo-500">
-                <Swords className="w-9 h-9 text-white" />
+              <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-indigo-100 border border-slate-200 overflow-hidden">
+                <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h1 className="font-display text-3xl font-extrabold text-indigo-600 tracking-tight">
@@ -199,7 +199,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
           
           <div className="space-y-4 col-span-1">
             <div className="flex items-center gap-3">
-              <Swords className="text-white w-6 h-6" />
+              <img src="/logo.png" alt="Emerald Realm logo" className="w-8 h-8 rounded-lg object-cover" />
               <span className="font-display font-black tracking-wider text-white text-lg">EMERALD REALM</span>
             </div>
             <p className="text-slate-400 text-xs leading-relaxed max-w-xs">

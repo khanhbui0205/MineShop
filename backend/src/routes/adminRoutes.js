@@ -21,6 +21,7 @@ const {
   getAllTransactions,
   testRcon,
 } = require('../controllers/adminController');
+const { createNotification } = require('../controllers/notificationController');
 
 // Tất cả routes admin đều cần xác thực + quyền admin
 router.use(protect, admin);
@@ -50,5 +51,8 @@ router.get('/payment-config', getPaymentConfig);
 router.put('/payment-config', updatePaymentConfig);
 router.post('/payment-config/test', testPaymentConfig);
 router.post('/test-rcon', testRcon);
+
+// Notifications
+router.post('/notifications', createNotification);
 
 module.exports = router;

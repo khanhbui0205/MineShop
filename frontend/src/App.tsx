@@ -65,7 +65,10 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-6">
-        <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+          <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-2xl animate-spin" />
+        </div>
         <div className="text-center">
           <h2 className="text-xl font-bold text-white tracking-wider">EMERALD REALM</h2>
           <p className="text-slate-400 font-medium mt-1">Đang tải ứng dụng...</p>

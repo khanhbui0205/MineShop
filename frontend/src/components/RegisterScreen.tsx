@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { User, Mail, Lock, CheckCircle, RefreshCw, Swords, Users, Video, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, CheckCircle, RefreshCw, Users, Video, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import api from '../lib/api';
@@ -124,7 +124,8 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
           className="w-full max-w-md"
         >
           {/* Header text container above cards */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 flex flex-col items-center">
+            <img src="/logo.png" alt="Emerald Realm logo" className="w-16 h-16 rounded-xl object-cover shadow-lg border border-slate-200 mb-4" />
             <h1 className="font-display text-4xl font-extrabold text-indigo-600 tracking-tight mb-2">
               EMERALD REALM
             </h1>
@@ -363,6 +364,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
           
           <div className="space-y-4 col-span-1">
             <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Emerald Realm logo" className="w-8 h-8 rounded-lg object-cover" />
               <span className="font-display font-black tracking-wider text-white text-lg">EMERALD REALM</span>
             </div>
             <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
@@ -394,7 +396,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
             <h4 className="font-display font-semibold text-xs tracking-wider text-slate-200 uppercase">Liên kết</h4>
             <div className="flex gap-4 mb-3">
               <button className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white transition-all">
-                <Swords className="w-4 h-4" />
+                <img src="/logo.png" alt="Emerald Realm logo" className="w-5 h-5 rounded object-cover" />
               </button>
               <button className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white transition-all">
                 <Users className="w-4 h-4" />

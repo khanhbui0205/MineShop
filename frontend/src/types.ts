@@ -151,7 +151,24 @@ export interface ServerCommand {
   createdAt: string;
 }
 
+export type NotificationType = 'system' | 'promotion' | 'payment' | 'warning';
+export type NotificationTargetType = 'all' | 'player';
+
+export interface NotificationItem {
+  id: string;
+  receiptId: string;
+  notificationId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  targetType: NotificationTargetType;
+  targetPlayerName?: string;
+  createdAt: string;
+  isRead: boolean;
+  readAt?: string | null;
+}
+
 export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Lịch sử' | 'Cài đặt';
-export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Server Control' | 'Cài đặt';
+export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Server Control' | 'Thông báo' | 'Cài đặt';
 export type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'ADMIN';
 

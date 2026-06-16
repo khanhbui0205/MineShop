@@ -6,7 +6,6 @@ import {
   Settings as SettingsIcon, 
   LogOut, 
   Coins, 
-  Swords,
   ShieldCheck
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -63,8 +62,8 @@ export default function MainLayout({ children, user, onLogout }: MainLayoutProps
       {/* SIDEBAR - DESKTOP */}
       <aside className="hidden md:flex flex-col w-64 bg-[#0f172a] text-white fixed top-0 left-0 h-full z-50">
         <div className="px-8 py-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-900/40">
-            <Swords className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-900/40 overflow-hidden">
+            <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="font-black text-lg tracking-tighter leading-none">EMERALD</h1>
@@ -123,7 +122,7 @@ export default function MainLayout({ children, user, onLogout }: MainLayoutProps
       {/* MOBILE HEADER */}
       <header className="md:hidden bg-[#0f172a] text-white border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-2">
-           <Swords className="w-6 h-6 text-indigo-500" />
+           <img src="/logo.png" alt="Emerald Realm logo" className="w-8 h-8 rounded-lg object-cover" />
            <span className="font-black text-indigo-400 tracking-wider">EMERALD REALM</span>
         </div>
         <button onClick={onLogout} className="text-red-400">

@@ -5,13 +5,13 @@ import {
   Users,
   LogOut,
   ShieldCheck,
-  Swords,
   Settings,
   Bell,
   AlertCircle,
   CreditCard,
   Terminal,
   TrendingUp,
+  Send,
 } from 'lucide-react';
 import type { AdminTab, CoinPackage, Player, AuditLog, AdminStats } from '../types';
 import DashboardAdmin from './DashboardAdmin';
@@ -19,6 +19,7 @@ import UsersAdmin from './UsersAdmin';
 import PaymentAdmin from './PaymentAdmin';
 import ServerControlAdmin from './ServerControlAdmin';
 import RevenueAnalyticsAdmin from './RevenueAnalyticsAdmin';
+import NotificationAdmin from './NotificationAdmin';
 import api from '../lib/api';
 
 
@@ -255,6 +256,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
     { label: 'Doanh thu', icon: <TrendingUp size={18} /> },
     { label: 'Thanh toán', icon: <CreditCard size={18} /> },
     { label: 'Server Control', icon: <Terminal size={18} /> },
+    { label: 'Thông báo', icon: <Send size={18} /> },
     { label: 'Cài đặt', icon: <Settings size={18} /> },
   ];
 
@@ -285,8 +287,8 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
         {/* Brand */}
         <div className="px-6 py-7 border-b border-white/5">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
-              <Swords size={18} className="text-white" />
+            <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
+              <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="font-bold text-sm text-white tracking-wide">EMERALD REALM</h1>
@@ -369,7 +371,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#141821] border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <Swords size={14} />
+            <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full rounded-lg object-cover" />
           </div>
           <span className="font-bold text-sm text-white">Admin Panel</span>
         </div>
@@ -409,7 +411,10 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Hệ thống hoạt động</span>
             </div>
-            <button className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors">
+            <button
+              onClick={() => setActiveTab('Thông báo')}
+              className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors"
+            >
               <Bell size={16} />
             </button>
           </div>
@@ -497,6 +502,18 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
                   transition={{ duration: 0.25 }}
                 >
                   <ServerControlAdmin />
+                </motion.div>
+              )}
+
+              {activeTab === 'Thông báo' && (
+                <motion.div
+                  key="notifications"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <NotificationAdmin showToast={showToast} addAuditLog={addAuditLog} />
                 </motion.div>
               )}
 
