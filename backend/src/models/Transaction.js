@@ -24,6 +24,22 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    baseCoins: {
+      type: Number,
+      default: 0,
+    },
+    bonusCoins: {
+      type: Number,
+      default: 0,
+    },
+    totalCoins: {
+      type: Number,
+      default: 0,
+    },
+    command: {
+      type: String,
+      default: '',
+    },
     package: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Package',

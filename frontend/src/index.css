@@ -70,6 +70,62 @@
   100% { transform: translateY(-100px) scale(1); opacity: 0; }
 }
 
+@keyframes promo-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.35);
+  }
+  50% {
+    transform: scale(1.035);
+    box-shadow: 0 6px 18px rgba(255, 152, 0, 0.45);
+  }
+}
+
+.promo-badge {
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.35);
+  border-radius: 12px;
+  animation: promo-badge-pulse 2s infinite;
+}
+
+.promo-badge-bonus {
+  background: linear-gradient(135deg, #FFE082 0%, #FFC107 50%, #FF9800 100%);
+  color: #C62828;
+  border: 2px solid #FFB300;
+}
+
+.promo-badge-discount {
+  background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+  color: #D32F2F;
+  border: 2px solid #F44336;
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.18);
+}
+
+.promo-badge-vip {
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.35), 0 0 22px rgba(255, 193, 7, 0.55);
+}
+
+.admin-select {
+  background-color: #1f2937;
+  color: #ffffff;
+  font-family: Inter, Roboto, "Segoe UI", sans-serif;
+}
+
+.admin-select option {
+  background-color: #ffffff;
+  color: #111827;
+  font-family: Inter, Roboto, "Segoe UI", sans-serif;
+}
+
+.admin-select option:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.admin-select option:checked {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
 .particle {
   position: absolute;
   background: rgba(79, 70, 229, 0.08);

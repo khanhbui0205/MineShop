@@ -31,6 +31,8 @@ export default function DashboardAdmin({
   const [price, setPrice] = useState<number>(50000);
   const [coinAmount, setCoinAmount] = useState<number>(500);
   const [bonusCoin, setBonusCoin] = useState<number>(0);
+  const [promotionType, setPromotionType] = useState<'none' | 'bonus_coin' | 'discount'>('none');
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [description, setDescription] = useState('');
   const [isVisible, setIsVisible] = useState(true);
   const [category, setCategory] = useState<'Coin' | 'VIP' | 'Pass'>('Coin');
@@ -40,6 +42,12 @@ export default function DashboardAdmin({
 
   const openCreateModal = () => {
     setEditingPackage(null);
+    setName('');
+    setPrice(50000);
+    setCoinAmount(500);
+    setBonusCoin(0);
+    setPromotionType('none');
+    setDiscountPercent(0);
     setDescription(''); setIsVisible(true); setCategory(activeTab); setCommands('');
     setIsModalOpen(true);
   };
@@ -48,8 +56,10 @@ export default function DashboardAdmin({
     setEditingPackage(pkg);
     setName(pkg.name);
     setPrice(pkg.price);
-    setCoinAmount(pkg.coinAmount);
-    setBonusCoin(pkg.bonusCoin);
+    setCoinAmount(pkg.baseCoins ?? pkg.coinAmount);
+    setBonusCoin(pkg.bonusCoins ?? pkg.bonusCoin ?? 0);
+    setPromotionType(pkg.promotionType ?? ((pkg.bonusCoins ?? pkg.bonusCoin ?? 0) > 0 ? 'bonus_coin' : 'none'));
+    setDiscountPercent(pkg.discountPercent ?? 0);
     setDescription(pkg.description || '');
     setIsVisible(pkg.isVisible);
     setCategory(pkg.category);
@@ -60,8 +70,22 @@ export default function DashboardAdmin({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (promotionType === 'bonus_coin' && bonusCoin < 0) return;
+    if (promotionType === 'discount' && (discountPercent < 0 || discountPercent > 100)) return;
+    const normalizedBonusCoin = category === 'Coin' || promotionType === 'bonus_coin' ? bonusCoin : 0;
+    const normalizedDiscountPercent = promotionType === 'discount' ? discountPercent : 0;
+    const normalizedPromotionType: 'none' | 'bonus_coin' | 'discount' = promotionType === 'discount'
+      ? 'discount'
+      : normalizedBonusCoin > 0
+        ? 'bonus_coin'
+        : 'none';
     const pkgData = {
-      name, price, coinAmount, bonusCoin, description,
+      name, price, coinAmount,
+      bonusCoin: normalizedBonusCoin,
+      bonusCoins: normalizedBonusCoin,
+      promotionType: normalizedPromotionType,
+      discountPercent: normalizedDiscountPercent,
+      description,
       isVisible, category,
       commands: commands.split('\n').map(cmd => cmd.trim()).filter(cmd => cmd !== ''),
     };
@@ -71,6 +95,11 @@ export default function DashboardAdmin({
       onAddPackage(pkgData);
     }
     setIsModalOpen(false);
+  };
+
+  const handlePromotionTypeChange = (value: 'none' | 'bonus_coin' | 'discount') => {
+    setPromotionType(value);
+    if (value !== 'discount') setDiscountPercent(0);
   };
 
   return (
@@ -140,7 +169,7 @@ export default function DashboardAdmin({
                 <th className="px-6 py-4">Gói nạp</th>
                 <th className="px-6 py-4 text-right">Giá (VNĐ)</th>
                 <th className="px-6 py-4 text-center">Xu nhận</th>
-                <th className="px-6 py-4 text-center">Xu thưởng</th>
+                <th className="px-6 py-4 text-center">Khuyến mãi</th>
                 <th className="px-6 py-4 text-center">Hiển thị</th>
                 <th className="px-6 py-4 text-right">Thao tác</th>
               </tr>
@@ -182,12 +211,18 @@ export default function DashboardAdmin({
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {pkg.bonusCoin > 0 ? (
-                          <span className="bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-lg text-xs font-bold">
-                            +{pkg.bonusCoin.toLocaleString('vi-VN')} Xu
+                        {(pkg.bonusCoins ?? pkg.bonusCoin ?? 0) > 0 && (pkg.promotionPercent ?? 0) > 0 ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-lg text-xs font-bold">
+                              {pkg.promotionBadgeText || `+${pkg.promotionPercent}% Coins`}
+                            </span>
+                          </div>
+                        ) : pkg.promotionType === 'discount' && (pkg.discountPercent ?? 0) > 0 ? (
+                          <span className="bg-red-500/15 text-red-300 px-2.5 py-1 rounded-lg text-xs font-bold border border-red-500/20">
+                            {pkg.promotionBadgeText || `OFF -${pkg.discountPercent}%`}
                           </span>
                         ) : (
-                          <span className="text-slate-600 text-xs">—</span>
+                          <span className="text-slate-600 text-xs">Không có</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -328,7 +363,7 @@ export default function DashboardAdmin({
                     <select
                       value={category}
                       onChange={e => setCategory(e.target.value as any)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      className="admin-select w-full border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     >
                       <option value="Coin">Gói Xu</option>
                       <option value="VIP">Gói VIP</option>
@@ -350,16 +385,49 @@ export default function DashboardAdmin({
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Loại khuyến mãi</label>
+                    <select
+                      value={promotionType}
+                      onChange={e => handlePromotionTypeChange(e.target.value as 'none' | 'bonus_coin' | 'discount')}
+                      className="admin-select w-full border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    >
+                      <option value="none">Không khuyến mãi</option>
+                      <option value="bonus_coin">Thưởng coins</option>
+                      <option value="discount">Giảm giá</option>
+                    </select>
+                  </div>
+                </div>
+
+                {(category === 'Coin' || promotionType === 'bonus_coin') && (
+                  <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Xu thưởng</label>
                     <input
                       type="number"
                       min="0"
                       value={bonusCoin}
-                      onChange={e => setBonusCoin(parseInt(e.target.value) || 0)}
+                      onChange={e => {
+                        const nextBonus = Math.max(0, parseInt(e.target.value) || 0);
+                        setBonusCoin(nextBonus);
+                        if (nextBonus > 0 && promotionType === 'none') setPromotionType('bonus_coin');
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
                   </div>
-                </div>
+                )}
+
+                {promotionType === 'discount' && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Phần trăm giảm giá</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discountPercent}
+                      onChange={e => setDiscountPercent(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3">
                   <span className="text-sm font-semibold text-white">Hiển thị gói này</span>
@@ -375,17 +443,34 @@ export default function DashboardAdmin({
                   </button>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Commands (Minecraft)</label>
-                  <textarea
-                    value={commands}
-                    onChange={e => setCommands(e.target.value)}
-                    placeholder="eco give {player} 100&#10;lp user {player} parent add vip"
-                    rows={4}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">Sử dụng {'{player}'} để thay thế tên người chơi. Mỗi dòng 1 lệnh.</p>
-                </div>
+                {category === 'Coin' ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Người chơi sẽ nhận</span>
+                      <span className="text-sm font-black text-emerald-200 font-mono">
+                        {(coinAmount + bonusCoin).toLocaleString('vi-VN')} Coins
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Lệnh tự động</span>
+                      <code className="mt-1 block rounded-lg bg-slate-950/70 px-3 py-2 text-xs text-emerald-300 font-mono">
+                        eco give {'{player}'} {coinAmount + bonusCoin}
+                      </code>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Commands (Minecraft)</label>
+                    <textarea
+                      value={commands}
+                      onChange={e => setCommands(e.target.value)}
+                      placeholder="lp user {player} parent add vip"
+                      rows={4}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Sử dụng {'{player}'} để thay thế tên người chơi. Mỗi dòng 1 lệnh.</p>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <button

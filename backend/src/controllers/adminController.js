@@ -11,6 +11,101 @@ const PENDING_STATUSES = ['PENDING', 'pending'];
 const CANCELLED_STATUSES = ['CANCELLED', 'CANCELED', 'EXPIRED', 'cancelled', 'canceled', 'expired'];
 const FAILED_STATUSES = ['FAILED', 'failed'];
 
+const PROMOTION_TYPES = ['none', 'bonus_coin', 'discount'];
+const MINECRAFT_PLAYER_NAME_REGEX = /^[a-zA-Z0-9_]{3,16}$/;
+const getPackageBaseCoins = (pkg) => Number(pkg?.coinAmount || pkg?.baseCoins || 0);
+const getPackagePromotionType = (pkg) => {
+  const legacyBonusCoins = Number(pkg?.bonusCoins ?? pkg?.bonusCoin ?? 0);
+  if (pkg?.promotionType === 'discount') return 'discount';
+  if (pkg?.promotionType === 'bonus_coin' || legacyBonusCoins > 0) return 'bonus_coin';
+  return 'none';
+};
+const getPackageBonusCoins = (pkg) => {
+  return Number(pkg?.bonusCoins ?? pkg?.bonusCoin ?? 0);
+};
+const getPackagePromotionPercent = (pkg) => {
+  const baseCoins = getPackageBaseCoins(pkg);
+  const bonusCoins = getPackageBonusCoins(pkg);
+  if (!baseCoins || !bonusCoins) return 0;
+  return Math.round((bonusCoins / baseCoins) * 1000) / 10;
+};
+const getPackageDiscountPercent = (pkg) => {
+  if (getPackagePromotionType(pkg) !== 'discount') return 0;
+  const discountPercent = Number(pkg?.discountPercent || 0);
+  return Math.min(Math.max(discountPercent, 0), 100);
+};
+const getPackageFinalPrice = (pkg) => {
+  const originalPrice = Number(pkg?.price || pkg?.originalPrice || 0);
+  const discountPercent = getPackageDiscountPercent(pkg);
+  if (!originalPrice || !discountPercent) return originalPrice;
+  return Math.max(0, Math.round(originalPrice - (originalPrice * discountPercent) / 100));
+};
+const getPackagePromotionBadgeText = (pkg) => {
+  const promotionType = getPackagePromotionType(pkg);
+  const promotionPercent = getPackagePromotionPercent(pkg);
+  if (promotionPercent > 0) {
+    return `+${promotionPercent}% Coins`;
+  }
+  if (promotionType === 'bonus_coin') {
+    return promotionPercent > 0 ? `+${promotionPercent}% Coins` : '';
+  }
+  if (promotionType === 'discount') {
+    const discountPercent = getPackageDiscountPercent(pkg);
+    return discountPercent > 0 ? `OFF -${discountPercent}%` : '';
+  }
+  return '';
+};
+const serializePackage = (pkg) => {
+  const data = typeof pkg.toObject === 'function' ? pkg.toObject() : pkg;
+  const baseCoins = getPackageBaseCoins(data);
+  const promotionType = getPackagePromotionType(data);
+  const bonusCoins = getPackageBonusCoins(data);
+  const discountPercent = promotionType === 'discount' ? getPackageDiscountPercent(data) : 0;
+  const originalPrice = Number(data.price || 0);
+  const finalPrice = getPackageFinalPrice(data);
+  return {
+    ...data,
+    baseCoins,
+    coinAmount: baseCoins,
+    bonusCoins,
+    bonusCoin: bonusCoins,
+    promotionType,
+    discountPercent,
+    originalPrice,
+    finalPrice,
+    promotionPercent: getPackagePromotionPercent({ coinAmount: baseCoins, bonusCoins, promotionType }),
+    promotionBadgeText: getPackagePromotionBadgeText({ ...data, coinAmount: baseCoins, bonusCoins, promotionType }),
+  };
+};
+
+const normalizePromotionInput = ({ promotionType, bonusCoin, bonusCoins, discountPercent }) => {
+  const fallbackBonusCoins = Number(bonusCoins ?? bonusCoin ?? 0);
+  const fallbackDiscountPercent = Number(discountPercent ?? 0);
+  const normalizedType = PROMOTION_TYPES.includes(promotionType)
+    ? (promotionType === 'none' && fallbackBonusCoins > 0 ? 'bonus_coin' : promotionType)
+    : fallbackBonusCoins > 0
+      ? 'bonus_coin'
+      : fallbackDiscountPercent > 0
+        ? 'discount'
+        : 'none';
+  const normalizedBonusCoins = Number(bonusCoins ?? bonusCoin ?? 0);
+  const normalizedDiscountPercent = normalizedType === 'discount' ? Number(discountPercent ?? 0) : 0;
+
+  if (!Number.isSafeInteger(normalizedBonusCoins) || normalizedBonusCoins < 0) {
+    return { error: 'Xu thưởng không được âm' };
+  }
+
+  if (normalizedDiscountPercent < 0 || normalizedDiscountPercent > 100) {
+    return { error: 'Phần trăm giảm giá phải từ 0 đến 100' };
+  }
+
+  return {
+    promotionType: normalizedType,
+    bonusCoins: normalizedBonusCoins,
+    discountPercent: normalizedDiscountPercent,
+  };
+};
+
 // ─── DASHBOARD STATS ──────────────────────────────────────────────────────────
 
 // @desc    Get admin dashboard stats
@@ -472,7 +567,7 @@ exports.resetPassword = async (req, res) => {
 exports.getPackages = async (req, res) => {
   try {
     const packages = await Package.find().sort({ createdAt: -1 });
-    res.json(packages);
+    res.json(packages.map(serializePackage));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -484,7 +579,7 @@ exports.getPackages = async (req, res) => {
 exports.getPublicPackages = async (req, res) => {
   try {
     const packages = await Package.find({ isVisible: true }).sort({ price: 1 });
-    res.json(packages);
+    res.json(packages.map(serializePackage));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -495,7 +590,9 @@ exports.getPublicPackages = async (req, res) => {
 // @access  Private/Admin
 exports.createPackage = async (req, res) => {
   try {
-    const { name, description, price, coinAmount, bonusCoin, isVisible, category, commands } = req.body;
+    const { name, description, price, coinAmount, bonusCoin, bonusCoins, promotionType, discountPercent, isVisible, category, commands } = req.body;
+    const promotion = normalizePromotionInput({ promotionType, bonusCoin, bonusCoins, discountPercent });
+    const packageCategory = category || 'Coin';
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Vui lòng nhập tên gói' });
@@ -503,8 +600,17 @@ exports.createPackage = async (req, res) => {
     if (!price || price <= 0) {
       return res.status(400).json({ message: 'Giá gói phải lớn hơn 0' });
     }
-    if (coinAmount === undefined || coinAmount < 0) {
+    if (
+      coinAmount === undefined ||
+      !Number.isSafeInteger(Number(coinAmount)) ||
+      coinAmount < 0 ||
+      (packageCategory === 'Coin' && Number(coinAmount) <= 0)
+    ) {
       return res.status(400).json({ message: 'Số coin không hợp lệ' });
+    }
+
+    if (promotion.error) {
+      return res.status(400).json({ message: promotion.error });
     }
 
     const pkg = await Package.create({
@@ -512,15 +618,18 @@ exports.createPackage = async (req, res) => {
       description: description || '',
       price,
       coinAmount,
-      bonusCoin: bonusCoin || 0,
+      promotionType: promotion.promotionType,
+      bonusCoin: promotion.bonusCoins,
+      bonusCoins: promotion.bonusCoins,
+      discountPercent: promotion.discountPercent,
       isVisible: isVisible !== undefined ? isVisible : true,
-      category: category || 'Coin',
+      category: packageCategory,
       image: req.body.image || '',
       sortOrder: req.body.sortOrder || 0,
-      commands: commands || [],
+      commands: packageCategory === 'Coin' ? [] : (commands || []),
     });
 
-    res.status(201).json(pkg);
+    res.status(201).json(serializePackage(pkg));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -534,21 +643,41 @@ exports.updatePackage = async (req, res) => {
     const pkg = await Package.findById(req.params.id);
     if (!pkg) return res.status(404).json({ message: 'Không tìm thấy gói nạp' });
 
-    const { name, description, price, coinAmount, bonusCoin, isVisible, category, commands } = req.body;
+    const { name, description, price, coinAmount, bonusCoin, bonusCoins, promotionType, discountPercent, isVisible, category, commands } = req.body;
 
     if (name !== undefined) pkg.name = name.trim();
     if (description !== undefined) pkg.description = description;
     if (price !== undefined) pkg.price = price;
-    if (coinAmount !== undefined) pkg.coinAmount = coinAmount;
-    if (bonusCoin !== undefined) pkg.bonusCoin = bonusCoin;
+    const nextCategory = category !== undefined ? category : pkg.category;
+    if (coinAmount !== undefined) {
+      if (!Number.isSafeInteger(Number(coinAmount)) || coinAmount < 0 || (nextCategory === 'Coin' && Number(coinAmount) <= 0)) {
+        return res.status(400).json({ message: 'Số coin không hợp lệ' });
+      }
+      pkg.coinAmount = coinAmount;
+    }
+    if (promotionType !== undefined || bonusCoin !== undefined || bonusCoins !== undefined || discountPercent !== undefined) {
+      const promotion = normalizePromotionInput({
+        promotionType: promotionType ?? pkg.promotionType,
+        bonusCoin: bonusCoin ?? pkg.bonusCoin,
+        bonusCoins: bonusCoins ?? pkg.bonusCoins,
+        discountPercent: discountPercent ?? pkg.discountPercent,
+      });
+      if (promotion.error) {
+        return res.status(400).json({ message: promotion.error });
+      }
+      pkg.promotionType = promotion.promotionType;
+      pkg.bonusCoin = promotion.bonusCoins;
+      pkg.bonusCoins = promotion.bonusCoins;
+      pkg.discountPercent = promotion.discountPercent;
+    }
     if (isVisible !== undefined) pkg.isVisible = isVisible;
     if (category !== undefined) pkg.category = category;
     if (req.body.image !== undefined) pkg.image = req.body.image;
     if (req.body.sortOrder !== undefined) pkg.sortOrder = req.body.sortOrder;
-    if (commands !== undefined) pkg.commands = commands;
+    if (commands !== undefined || nextCategory === 'Coin') pkg.commands = nextCategory === 'Coin' ? [] : commands;
 
     await pkg.save();
-    res.json(pkg);
+    res.json(serializePackage(pkg));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -604,8 +733,18 @@ exports.purchasePackage = async (req, res) => {
 
     // In this simulation, since prices are in VNĐ and usually require external payment,
     // we simulate a successful payment and update the user's balance/stats.
-    user.balance += (pkg.coinAmount + pkg.bonusCoin);
-    user.totalDeposited += pkg.price;
+    const serializedPackage = serializePackage(pkg);
+    const baseCoins = serializedPackage.baseCoins;
+    const bonusCoins = serializedPackage.bonusCoins || 0;
+    const totalCoins = baseCoins + bonusCoins;
+    const finalPrice = serializedPackage.finalPrice;
+    const playerName = resolveMinecraftUsername(user);
+    const rewardCommand = pkg.category === 'Coin' && MINECRAFT_PLAYER_NAME_REGEX.test(playerName || '')
+      ? `eco give ${playerName} ${totalCoins}`
+      : '';
+
+    user.balance += totalCoins;
+    user.totalDeposited += finalPrice;
 
     // Update rank if it's a VIP package
     if (pkg.category === 'VIP') {
@@ -619,8 +758,12 @@ exports.purchasePackage = async (req, res) => {
       user: user._id,
       type: 'Deposit',
       item: pkg.name,
-      amount: `+${(pkg.coinAmount + pkg.bonusCoin).toLocaleString('vi-VN')} Xu`,
-      coinsChange: pkg.coinAmount + pkg.bonusCoin,
+      amount: finalPrice,
+      coinsChange: totalCoins,
+      baseCoins,
+      bonusCoins,
+      totalCoins,
+      command: rewardCommand,
       status: 'PAID'
     });
 

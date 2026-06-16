@@ -10,6 +10,10 @@ export interface Transaction {
   item: string;
   amount: string;
   coinsChange: number;
+  baseCoins?: number;
+  bonusCoins?: number;
+  totalCoins?: number;
+  command?: string;
   date?: string;
   createdAt?: string;
   status: 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED' | 'pending' | 'completed' | 'cancelled' | 'failed' | 'Completed' | 'Claimed';
@@ -45,7 +49,15 @@ export interface StoreItem {
   icon: string;
   type: 'Rank' | 'BattlePass' | 'Coins' | 'Cosmetic';
   bonusCoin?: number;
+  bonusCoins?: number;
   coinAmount?: number;
+  baseCoins?: number;
+  promotionPercent?: number;
+  promotionType?: 'none' | 'bonus_coin' | 'discount';
+  discountPercent?: number;
+  originalPrice?: number;
+  finalPrice?: number;
+  promotionBadgeText?: string;
   commands?: string[];
   rights?: string[];
   category?: string;
@@ -64,6 +76,14 @@ export interface CoinPackage {
   price: number;          // VNĐ
   coinAmount: number;
   bonusCoin: number;
+  baseCoins?: number;
+  bonusCoins?: number;
+  promotionPercent?: number;
+  promotionType?: 'none' | 'bonus_coin' | 'discount';
+  discountPercent?: number;
+  originalPrice?: number;
+  finalPrice?: number;
+  promotionBadgeText?: string;
   isVisible: boolean;
   category: 'Coin' | 'VIP' | 'Pass';
   commands?: string[];

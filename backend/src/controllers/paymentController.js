@@ -33,6 +33,39 @@ function canAccessTransaction(req, transaction) {
   return req.user.role === 'admin' || getTransactionUserId(transaction) === req.user._id.toString();
 }
 
+const PROMOTION_TYPES = ['none', 'bonus_coin', 'discount'];
+function getPackageBaseCoins(pkg) {
+  return Number(pkg?.coinAmount || pkg?.baseCoins || 0);
+}
+
+function getPackagePromotionType(pkg) {
+  const legacyBonusCoins = Number(pkg?.bonusCoins ?? pkg?.bonusCoin ?? 0);
+  if (pkg?.promotionType === 'discount') return 'discount';
+  if (pkg?.promotionType === 'bonus_coin' || legacyBonusCoins > 0) return 'bonus_coin';
+  return 'none';
+}
+
+function getPackageBonusCoins(pkg) {
+  return Number(pkg?.bonusCoins ?? pkg?.bonusCoin ?? 0);
+}
+
+function getPackageDiscountPercent(pkg) {
+  if (getPackagePromotionType(pkg) !== 'discount') return 0;
+  const discountPercent = Number(pkg?.discountPercent || 0);
+  return Math.min(Math.max(discountPercent, 0), 100);
+}
+
+function getPackageFinalPrice(pkg) {
+  const originalPrice = Number(pkg?.price || 0);
+  const discountPercent = getPackageDiscountPercent(pkg);
+  if (!originalPrice || !discountPercent) return originalPrice;
+  return Math.max(0, Math.round(originalPrice - (originalPrice * discountPercent) / 100));
+}
+
+function isValidMinecraftPlayerName(playerName) {
+  return /^[a-zA-Z0-9_]{3,16}$/.test(String(playerName || ''));
+}
+
 function buildStatusResponse(transaction) {
   const payload = buildPaymentPayload(transaction);
   return {
@@ -141,19 +174,44 @@ exports.createPayment = async (req, res) => {
       return res.status(404).json({ message: 'Package not found' });
     }
 
+    if (!isValidMinecraftPlayerName(playerName)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_PLAYER_NAME',
+        message: 'Minecraft username is invalid',
+      });
+    }
+
     const payos = await getPayOSInstance();
     const orderCode = await generateOrderCode();
     const domain = getFrontendDomain();
+    const finalPrice = getPackageFinalPrice(pkg);
+    const baseCoins = getPackageBaseCoins(pkg);
+    const bonusCoins = getPackageBonusCoins(pkg);
+    const totalCoins = baseCoins + bonusCoins;
+    const rewardCommand = pkg.category === 'Coin' ? `eco give ${playerName} ${totalCoins}` : '';
+
+    if (
+      pkg.category === 'Coin' &&
+      (!Number.isSafeInteger(baseCoins) ||
+        !Number.isSafeInteger(bonusCoins) ||
+        !Number.isSafeInteger(totalCoins) ||
+        baseCoins <= 0 ||
+        bonusCoins < 0 ||
+        totalCoins <= 0)
+    ) {
+      return res.status(400).json({ message: 'Coin package configuration is invalid' });
+    }
 
     const paymentBody = {
       orderCode,
-      amount: Number(pkg.price),
+      amount: finalPrice,
       description: `MS${orderCode}`,
       items: [
         {
           name: pkg.name,
           quantity: 1,
-          price: Number(pkg.price),
+          price: finalPrice,
         },
       ],
       returnUrl: `${domain}/payment/success?orderCode=${orderCode}`,
@@ -168,8 +226,12 @@ exports.createPayment = async (req, res) => {
       package: pkg._id,
       type: 'Deposit',
       item: pkg.name,
-      amount: Number(pkg.price),
-      coinsChange: Number(pkg.coinAmount || 0) + Number(pkg.bonusCoin || 0),
+      amount: finalPrice,
+      coinsChange: totalCoins,
+      baseCoins,
+      bonusCoins,
+      totalCoins,
+      command: rewardCommand,
       orderCode,
       payosOrderId: payosId,
       paymentUrl: paymentLinkRes.checkoutUrl,

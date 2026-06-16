@@ -420,7 +420,7 @@ export default function SettingsAdmin({ initialSessions }: SettingsAdminProps) {
                 <select 
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full bg-surface-container-lowest border border-white/10 rounded-xl px-4 py-2.5 text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                  className="admin-select w-full border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
                 >
                   <option value="English (US)">English (US)</option>
                   <option value="Deutsch">Deutsch</option>

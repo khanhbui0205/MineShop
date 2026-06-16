@@ -96,27 +96,50 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
         setUserProfile(mapProfileData(profileRes.data));
         
         // Map CoinPackage to StoreItem
-        const mappedItems: StoreItem[] = pkgRes.data.map((pkg: any) => ({
-          id: pkg._id,
-          _id: pkg._id,
-          name: pkg.name,
-          description: pkg.description || '',
-          price: pkg.price,
-          currency: 'USD',
-          badge: pkg.category === 'Coin' 
-            ? `${(pkg.coinAmount + pkg.bonusCoin).toLocaleString('vi-VN')} Xu`
-            : (pkg.bonusCoin > 0 ? `+${pkg.bonusCoin.toLocaleString('vi-VN')} Xu Thưởng` : undefined),
-          icon: pkg.category === 'Coin' ? 'payments' : pkg.category === 'VIP' ? 'workspace_premium' : 'stars',
-          type: pkg.category === 'Coin' ? 'Coins' : pkg.category === 'VIP' ? 'Rank' : 'BattlePass',
-          bonusCoin: pkg.bonusCoin,
-          coinAmount: pkg.coinAmount,
-          commands: pkg.commands || [],
-          rights: pkg.rights || [],
-          category: pkg.category,
-          image: pkg.image,
-          items: pkg.items || [],
-          duration: pkg.duration || '',
-        }));
+        const mappedItems: StoreItem[] = pkgRes.data.map((pkg: any) => {
+          const baseCoins = Number(pkg.baseCoins ?? pkg.coinAmount ?? 0);
+          const rawBonusCoins = Number(pkg.bonusCoins ?? pkg.bonusCoin ?? 0);
+          const promotionType = pkg.promotionType ?? (rawBonusCoins > 0 ? 'bonus_coin' : 'none');
+          const bonusCoins = rawBonusCoins;
+          const promotionPercent = Number(pkg.promotionPercent ?? (baseCoins > 0 && bonusCoins > 0 ? Math.round((bonusCoins / baseCoins) * 1000) / 10 : 0));
+          const discountPercent = promotionType === 'discount' ? Number(pkg.discountPercent ?? 0) : 0;
+          const originalPrice = Number(pkg.originalPrice ?? pkg.price ?? 0);
+          const finalPrice = Number(pkg.finalPrice ?? (discountPercent > 0 ? Math.round(originalPrice - (originalPrice * discountPercent) / 100) : originalPrice));
+          const promotionBadgeText = pkg.promotionBadgeText || (
+            promotionType === 'bonus_coin' && promotionPercent > 0
+              ? `+${promotionPercent}% Coins`
+              : promotionType === 'discount' && discountPercent > 0
+                ? `OFF -${discountPercent}%`
+                : ''
+          );
+          return {
+            id: pkg._id,
+            _id: pkg._id,
+            name: pkg.name,
+            description: pkg.description || '',
+            price: finalPrice,
+            currency: 'USD',
+            badge: pkg.category === 'Coin' && promotionBadgeText ? promotionBadgeText : undefined,
+            icon: pkg.category === 'Coin' ? 'payments' : pkg.category === 'VIP' ? 'workspace_premium' : 'stars',
+            type: pkg.category === 'Coin' ? 'Coins' : pkg.category === 'VIP' ? 'Rank' : 'BattlePass',
+            bonusCoin: bonusCoins,
+            bonusCoins,
+            coinAmount: baseCoins,
+            baseCoins,
+            promotionPercent,
+            promotionType,
+            discountPercent,
+            originalPrice,
+            finalPrice,
+            promotionBadgeText,
+            commands: pkg.commands || [],
+            rights: pkg.rights || [],
+            category: pkg.category,
+            image: pkg.image,
+            items: pkg.items || [],
+            duration: pkg.duration || '',
+          };
+        });
         setStoreItems(mappedItems);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -924,15 +947,34 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredStoreItems.map((item) => {
                     const isPurchasable = item.currency === 'USD' || userProfile.balance >= item.price;
+                    const promotionPercent = Number(item.promotionPercent || 0);
+                    const discountPercent = Number(item.discountPercent || 0);
+                    const promotionType = item.promotionType || 'none';
+                    const baseCoins = Number(item.baseCoins ?? item.coinAmount ?? 0);
+                    const bonusCoins = Number(item.bonusCoins ?? item.bonusCoin ?? 0);
+                    const totalCoins = baseCoins + bonusCoins;
+                    const hasBonusPromotion = item.type === 'Coins' && bonusCoins > 0 && promotionPercent > 0;
+                    const hasDiscountPromotion = item.type === 'Coins' && promotionType === 'discount' && discountPercent > 0;
+                    const hasPromotion = hasBonusPromotion;
+                    const originalPrice = Number(item.originalPrice ?? item.price);
+                    const finalPrice = Number(item.finalPrice ?? item.price);
                     return (
                       <div 
                         key={item.id}
                         onClick={() => handlePurchaseItem(item)}
-                        className="bg-white rounded-2xl p-6 flex flex-col justify-between border border-slate-200/80 hover:border-indigo-300 hover:scale-[1.01] transition-all relative group shadow-md cursor-pointer"
+                        className={`rounded-2xl p-6 flex flex-col justify-between border hover:scale-[1.01] transition-all relative group cursor-pointer ${
+                          hasDiscountPromotion
+                            ? 'border-red-400/35 bg-[linear-gradient(180deg,#fff7f7_0%,#ffffff_100%)] shadow-[0_10px_30px_rgba(239,68,68,0.12)] hover:border-red-400/60'
+                            : 'bg-white border-slate-200/80 hover:border-indigo-300 shadow-md'
+                        }`}
                       >
-                        {item.badge && (
-                          <span className="absolute top-4 right-4 bg-amber-50 border border-amber-200 text-amber-700 font-mono text-[9px] uppercase font-bold px-2 py-0.5 rounded">
-                            {item.badge}
+                        {hasPromotion && (
+                          <span
+                            className={`promo-badge absolute top-3 right-3 z-20 inline-flex items-center justify-center gap-1 whitespace-nowrap px-3 py-1.5 text-[12px] sm:text-[13px] font-extrabold uppercase tracking-tight transition-transform duration-200 group-hover:scale-[1.08] ${
+                              'promo-badge-bonus'
+                            }`}
+                          >
+                            {`+${promotionPercent}% Coins`}
                           </span>
                         )}
 
@@ -962,6 +1004,16 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                             <p className="text-xs text-slate-500 mt-2 leading-relaxed font-medium">
                               {item.description}
                             </p>
+                            {item.type === 'Coins' && (
+                              <p className="text-[11px] text-emerald-600 mt-2 font-black">
+                                Nhận {totalCoins.toLocaleString('vi-VN')} Coins
+                                {bonusCoins > 0 && (
+                                  <span className="block text-[10px] text-slate-500 font-bold mt-0.5">
+                                    {baseCoins.toLocaleString('vi-VN')} + {bonusCoins.toLocaleString('vi-VN')} bonus
+                                  </span>
+                                )}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -969,9 +1021,20 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
                           <div className="flex flex-col">
                             <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-semibold">Đơn giá</span>
-                            <span className="text-lg font-black font-mono text-slate-950">
-                              {item.currency === 'USD' || item.price > 1000 ? formatVND(item.price) : `${item.price.toLocaleString('vi-VN')} Xu`}
-                            </span>
+                            {hasDiscountPromotion ? (
+                              <>
+                                <span className="text-xl font-black font-mono text-red-600">
+                                  {formatVND(finalPrice)}
+                                </span>
+                                <span className="text-xs font-bold font-mono text-slate-400 line-through">
+                                  {formatVND(originalPrice)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-lg font-black font-mono text-slate-950">
+                                {item.currency === 'USD' || item.price > 1000 ? formatVND(item.price) : `${item.price.toLocaleString('vi-VN')} Xu`}
+                              </span>
+                            )}
                           </div>
 
                           <button
@@ -1371,16 +1434,16 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-slate-500">Giá trị thực tế</span>
-                        <span className="text-sm font-black text-slate-900">{selectedDetail.coinAmount?.toLocaleString()} Xu</span>
+                        <span className="text-sm font-black text-slate-900">{(selectedDetail.baseCoins ?? selectedDetail.coinAmount ?? 0).toLocaleString()} Xu</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-emerald-600">Thưởng kèm theo</span>
-                        <span className="text-sm font-black text-emerald-600">+{selectedDetail.bonusCoin?.toLocaleString()} Xu</span>
+                        <span className="text-sm font-black text-emerald-600">+{(selectedDetail.bonusCoins ?? selectedDetail.bonusCoin ?? 0).toLocaleString()} Xu</span>
                       </div>
                       <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-100">
                         <span className="text-xs font-bold text-indigo-600">Tổng cộng nhận</span>
                         <span className="text-sm font-black text-indigo-600">
-                          {((selectedDetail.coinAmount || 0) + (selectedDetail.bonusCoin || 0)).toLocaleString()} Xu
+                          {((selectedDetail.baseCoins ?? selectedDetail.coinAmount ?? 0) + (selectedDetail.bonusCoins ?? selectedDetail.bonusCoin ?? 0)).toLocaleString()} Xu
                         </span>
                       </div>
                       <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
@@ -1418,7 +1481,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       </div>
                     </div>
 
-                    {user.role === 'admin' && (
+                    {user.role === 'admin' && selectedDetail.type !== 'Coins' && (
                       <div>
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lệnh sẽ thực thi (RCON)</h4>
                         <div className="space-y-1.5">
@@ -1510,7 +1573,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="flex items-center gap-1.5">
                       <Coins className="w-4 h-4 text-indigo-600" />
                       <span className="text-lg font-black text-indigo-600 font-mono">
-                        {((selectedPackage.coinAmount || 0) + (selectedPackage.bonusCoin || 0)).toLocaleString()} Xu
+                        {((selectedPackage.baseCoins ?? selectedPackage.coinAmount ?? 0) + (selectedPackage.bonusCoins ?? selectedPackage.bonusCoin ?? 0)).toLocaleString()} Xu
                       </span>
                     </div>
                   </div>
