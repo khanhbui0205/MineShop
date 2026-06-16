@@ -465,16 +465,16 @@ export default function RevenueAnalyticsAdmin() {
                     </td>
                     <td className="py-4 px-4 text-right">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
-                        tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                        tx.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
-                        tx.status === 'cancelled' ? 'bg-slate-500/10 text-slate-500' : 'bg-red-500/10 text-red-500'
+                        ['completed', 'paid'].includes(String(tx.status).toLowerCase()) ? 'bg-emerald-500/10 text-emerald-500' :
+                        String(tx.status).toLowerCase() === 'pending' ? 'bg-amber-500/10 text-amber-500' :
+                        String(tx.status).toLowerCase() === 'cancelled' ? 'bg-slate-500/10 text-slate-500' : 'bg-red-500/10 text-red-500'
                       }`}>
-                        {tx.status === 'completed' ? <CheckCircle2 size={10} /> :
-                         tx.status === 'pending' ? <Clock size={10} /> :
-                         tx.status === 'cancelled' ? <XCircle size={10} /> : <AlertCircle size={10} />}
-                        {tx.status === 'completed' ? 'Hoàn tất' : 
-                         tx.status === 'pending' ? 'Chờ duyệt' : 
-                         tx.status === 'cancelled' ? 'Đã hủy' : 'Thất bại'}
+                        {['completed', 'paid'].includes(String(tx.status).toLowerCase()) ? <CheckCircle2 size={10} /> :
+                         String(tx.status).toLowerCase() === 'pending' ? <Clock size={10} /> :
+                         String(tx.status).toLowerCase() === 'cancelled' ? <XCircle size={10} /> : <AlertCircle size={10} />}
+                        {['completed', 'paid'].includes(String(tx.status).toLowerCase()) ? 'Hoàn tất' : 
+                         String(tx.status).toLowerCase() === 'pending' ? 'Chờ duyệt' : 
+                         String(tx.status).toLowerCase() === 'cancelled' ? 'Đã hủy' : 'Thất bại'}
                       </span>
                     </td>
                   </tr>

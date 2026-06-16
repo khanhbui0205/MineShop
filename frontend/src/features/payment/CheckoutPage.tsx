@@ -25,6 +25,8 @@ export default function CheckoutPage() {
   const [timeLeft, setTimeLeft] = useState<number>(900); // Default 15 mins
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const isPaidStatus = (status: string) => ['PAID', 'paid', 'completed', 'Completed'].includes(status);
+  const isCancelledStatus = (status: string) => ['CANCELLED', 'FAILED', 'cancelled', 'failed', 'EXPIRED', 'expired'].includes(status);
 
   useEffect(() => {
     const fetchTransaction = async () => {
@@ -71,7 +73,7 @@ export default function CheckoutPage() {
 
   // Auto check status every 3 seconds (backend actively queries PayOS)
   useEffect(() => {
-    if (!transaction || transaction.status !== 'pending' || timeLeft <= 0) return;
+    if (!transaction || String(transaction.status).toLowerCase() !== 'pending' || timeLeft <= 0) return;
     
     console.log('[POLLING] Starting auto-check for orderCode:', transaction.orderCode);
     
@@ -81,22 +83,20 @@ export default function CheckoutPage() {
         const { status } = await paymentService.getPaymentStatus(transaction.orderCode);
         console.log('[POLLING] Status received:', status);
         
-        if (status === 'paid' || status === 'completed' || status === 'Completed') {
+        if (isPaidStatus(status)) {
           clearInterval(interval);
           console.log('[POLLING] Payment confirmed! Redirecting...');
           toast.success('🎉 Thanh toán thành công! Đang chuyển hướng...');
-          setTimeout(() => {
-            navigate('/payment/success/' + transaction._id);
-          }, 1500);
-        } else if (status === 'cancelled' || status === 'failed') {
+          navigate(`/payment/success?orderCode=${transaction.orderCode}`);
+        } else if (isCancelledStatus(status)) {
           clearInterval(interval);
           toast.error('Giao dịch đã bị hủy hoặc thất bại.');
-          navigate('/payment/failed');
+          navigate(`/payment/cancel?orderCode=${transaction.orderCode}`);
         }
       } catch (error) {
         console.error('[POLLING] Check status error:', error);
       }
-    }, 5000); // Poll every 5 seconds as requested
+    }, 3000);
 
     return () => {
       console.log('[POLLING] Cleanup interval');
@@ -124,9 +124,11 @@ export default function CheckoutPage() {
     setIsChecking(true);
     try {
       const { status } = await paymentService.checkPaymentStatus(transaction.orderCode);
-      if (status === 'paid' || status === 'completed' || status === 'Completed') {
+      if (isPaidStatus(status)) {
         toast.success('Thanh toán thành công!');
-        navigate('/payment/success/' + transaction._id);
+        navigate(`/payment/success?orderCode=${transaction.orderCode}`);
+      } else if (isCancelledStatus(status)) {
+        navigate(`/payment/cancel?orderCode=${transaction.orderCode}`);
       } else {
         toast.error('Chưa nhận được thanh toán. Vui lòng thử lại sau vài giây.');
       }

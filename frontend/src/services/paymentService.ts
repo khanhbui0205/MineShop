@@ -9,16 +9,19 @@ export interface CreatePaymentResponse {
 
 export interface PaymentTransaction {
   _id: string;
+  id?: string;
   orderCode: number;
   amount: number;
   coinsChange: number;
-  status: 'pending' | 'completed' | 'cancelled' | 'failed';
+  status: 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED' | 'pending' | 'completed' | 'cancelled' | 'failed';
   item: string;
+  packageName?: string;
   transactionId?: string;
   payosOrderId?: string;
   playerName?: string;
   minecraftUsername?: string;
   createdAt: string;
+  paidAt?: string;
   paymentUrl?: string;
   qrCode?: string;
   accountNumber?: string;
@@ -33,7 +36,18 @@ const paymentService = {
     return response.data;
   },
 
-  getPaymentStatus: async (orderCode: number): Promise<{ status: string, transactionId?: string, paymentUrl?: string }> => {
+  getPaymentStatus: async (orderCode: number): Promise<{
+    id?: string;
+    _id?: string;
+    status: string;
+    orderCode?: number;
+    amount?: number;
+    item?: string;
+    packageName?: string;
+    paidAt?: string;
+    transactionId?: string;
+    paymentUrl?: string;
+  }> => {
     const response = await http.get(`/payment/status/${orderCode}`);
     return response.data;
   },
@@ -55,7 +69,7 @@ const paymentService = {
     return response.data;
   },
 
-  checkPaymentStatus: async (orderCode: number): Promise<{ status: string, message: string }> => {
+  checkPaymentStatus: async (orderCode: number): Promise<{ status: string, message?: string, id?: string, _id?: string }> => {
     const response = await http.get(`/payment/check/${orderCode}`);
     return response.data;
   },

@@ -6,6 +6,11 @@ const bcrypt = require('bcryptjs');
 const minecraftService = require('../services/minecraftService');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
 
+const PAID_STATUSES = ['PAID', 'paid', 'completed', 'Completed'];
+const PENDING_STATUSES = ['PENDING', 'pending'];
+const CANCELLED_STATUSES = ['CANCELLED', 'CANCELED', 'EXPIRED', 'cancelled', 'canceled', 'expired'];
+const FAILED_STATUSES = ['FAILED', 'failed'];
+
 // ─── DASHBOARD STATS ──────────────────────────────────────────────────────────
 
 // @desc    Get admin dashboard stats
@@ -22,7 +27,7 @@ exports.getStats = async (req, res) => {
 
     // Tổng doanh thu (Chỉ tính các giao dịch completed)
     const revenueResult = await Transaction.aggregate([
-      { $match: { status: 'completed' } },
+      { $match: { status: { $in: PAID_STATUSES } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const totalRevenue = revenueResult[0]?.total || 0;
@@ -55,7 +60,7 @@ exports.getRevenueAnalytics = async (req, res) => {
       {
         $facet: {
           summaries: [
-            { $match: { status: 'completed' } },
+            { $match: { status: { $in: PAID_STATUSES } } },
             {
               $group: {
                 _id: null,
@@ -128,7 +133,7 @@ exports.getRevenueAnalytics = async (req, res) => {
     // 2. Charts Data
     // 7 Days Chart (by Day)
     const sevenDaysChart = await Transaction.aggregate([
-      { $match: { status: 'completed', createdAt: { $gte: startOfWeek } } },
+      { $match: { status: { $in: PAID_STATUSES }, createdAt: { $gte: startOfWeek } } },
       {
         $group: {
           _id: { $dateToString: { format: '%d/%m', date: '$createdAt' } },
@@ -142,7 +147,7 @@ exports.getRevenueAnalytics = async (req, res) => {
     // 30 Days Chart
     const startOf30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const thirtyDaysChart = await Transaction.aggregate([
-      { $match: { status: 'completed', createdAt: { $gte: startOf30Days } } },
+      { $match: { status: { $in: PAID_STATUSES }, createdAt: { $gte: startOf30Days } } },
       {
         $group: {
           _id: { $dateToString: { format: '%d/%m', date: '$createdAt' } },
@@ -156,7 +161,7 @@ exports.getRevenueAnalytics = async (req, res) => {
     // 12 Months Chart
     const startOf12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1);
     const twelveMonthsChart = await Transaction.aggregate([
-      { $match: { status: 'completed', createdAt: { $gte: startOf12Months } } },
+      { $match: { status: { $in: PAID_STATUSES }, createdAt: { $gte: startOf12Months } } },
       {
         $group: {
           _id: { $dateToString: { format: '%m/%Y', date: '$createdAt' } },
@@ -169,7 +174,7 @@ exports.getRevenueAnalytics = async (req, res) => {
 
     // 5. Top Packages
     const topPackages = await Transaction.aggregate([
-      { $match: { status: 'completed', package: { $exists: true } } },
+      { $match: { status: { $in: PAID_STATUSES }, package: { $exists: true } } },
       {
         $group: {
           _id: '$package',
@@ -184,7 +189,7 @@ exports.getRevenueAnalytics = async (req, res) => {
 
     // 6. Top Buyers
     const topBuyers = await Transaction.aggregate([
-      { $match: { status: 'completed' } },
+      { $match: { status: { $in: PAID_STATUSES } } },
       {
         $group: {
           _id: '$user',
@@ -227,9 +232,9 @@ exports.getRevenueAnalytics = async (req, res) => {
       orders: {
         total: totalOrders,
         successful: summaries.successfulOrders,
-        pending: statusCounts['pending'] || 0,
-        cancelled: statusCounts['cancelled'] || 0,
-        failed: statusCounts['failed'] || 0
+        pending: PENDING_STATUSES.reduce((sum, key) => sum + (statusCounts[key] || 0), 0),
+        cancelled: CANCELLED_STATUSES.reduce((sum, key) => sum + (statusCounts[key] || 0), 0),
+        failed: FAILED_STATUSES.reduce((sum, key) => sum + (statusCounts[key] || 0), 0)
       },
       charts: {
         sevenDays: sevenDaysChart,
@@ -616,7 +621,7 @@ exports.purchasePackage = async (req, res) => {
       item: pkg.name,
       amount: `+${(pkg.coinAmount + pkg.bonusCoin).toLocaleString('vi-VN')} Xu`,
       coinsChange: pkg.coinAmount + pkg.bonusCoin,
-      status: 'completed'
+      status: 'PAID'
     });
 
     res.json({
@@ -786,3 +791,4 @@ exports.testRcon = async (req, res) => {
     });
   }
 };
+
