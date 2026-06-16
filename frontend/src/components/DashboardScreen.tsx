@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type SyntheticEvent } from 'react';
 import { 
   Home, 
   ShoppingCart, 
@@ -47,6 +47,9 @@ import paymentService from '../services/paymentService';
 import type { MonthlyTopDonator } from '../services/paymentService';
 import minecraftService from '../services/minecraftService';
 import PromotionBadge from './PromotionBadge';
+import notificationService from '../services/notificationService';
+import type { NotificationItem } from '../types';
+import { toast } from 'react-hot-toast';
 
 
 interface DashboardScreenProps {
@@ -169,8 +172,54 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     fetchMonthlyTopDonators();
   }, []);
 
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+
+    const loadNotifications = async () => {
+      try {
+        const [items, count] = await Promise.all([
+          notificationService.list(),
+          notificationService.unreadCount(),
+        ]);
+        setUserNotifications(items);
+        setUnreadCount(count);
+      } catch (error) {
+        console.warn('Failed to load notifications.');
+      }
+    };
+
+    void loadNotifications();
+
+    if (localStorage.getItem('token')) {
+      eventSource = notificationService.openStream();
+      eventSource.addEventListener('notification:new', (event) => {
+        const incoming = JSON.parse((event as MessageEvent).data) as NotificationItem;
+        setUserNotifications((prev) => {
+          if (prev.some((item) => item.receiptId === incoming.receiptId)) return prev;
+          setUnreadCount((count) => count + 1);
+          return [incoming, ...prev].slice(0, 50);
+        });
+        toast(`${incoming.title}: ${incoming.message}`, {
+          position: 'top-right',
+          duration: 5000,
+        });
+      });
+      eventSource.onerror = () => {
+        console.warn('Notification stream disconnected; browser will retry.');
+      };
+    }
+
+    return () => {
+      eventSource?.close();
+    };
+  }, []);
+
   // States for Modals
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'refuse' } | null>(null);
+  const [userNotifications, setUserNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null);
 
   // Package Purchase States
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -191,7 +240,54 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
     setTimeout(() => setNotification(null), 4000);
   };
 
+  const formatNotificationTime = (date: string) => {
+    if (!date) return '';
+    return new Date(date).toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+    });
+  };
+
+  const handleNotificationClick = async (item: NotificationItem) => {
+    setSelectedNotificationId(item.receiptId);
+    if (item.isRead) return;
+
+    try {
+      const updated = await notificationService.markRead(item.receiptId);
+      setUserNotifications((prev) => prev.map((notificationItem) => (
+        notificationItem.receiptId === item.receiptId ? updated : notificationItem
+      )));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      triggerNotification('Khong the danh dau thong bao da doc', 'refuse');
+    }
+  };
+
+  const handleReadAllNotifications = async () => {
+    try {
+      await notificationService.markAllRead();
+      const readAt = new Date().toISOString();
+      setUserNotifications((prev) => prev.map((item) => ({ ...item, isRead: true, readAt })));
+      setUnreadCount(0);
+    } catch (error) {
+      triggerNotification('Khong the doc tat ca thong bao', 'refuse');
+    }
+  };
+
   const linkedMcName = userProfile.minecraftUsername || userProfile.username;
+  const defaultMinecraftAvatarUrl = 'https://mc-heads.net/avatar/Steve';
+  const getMinecraftAvatarUrl = (username?: string) => {
+    const playerName = String(username || '').trim();
+    return `https://mc-heads.net/avatar/${encodeURIComponent(playerName || 'Steve')}`;
+  };
+  const playerAvatarUrl = getMinecraftAvatarUrl(linkedMcName);
+  const handleAvatarError = (event: SyntheticEvent<HTMLImageElement>) => {
+    if (event.currentTarget.src !== defaultMinecraftAvatarUrl) {
+      event.currentTarget.src = defaultMinecraftAvatarUrl;
+    }
+  };
   const monthlyTopByRank = new Map(monthlyTopDonators.map((donator) => [donator.rank, donator]));
   const formatTopAmount = (amount: number) => `${new Intl.NumberFormat('vi-VN').format(amount)} VND`;
   const getItemBaseCoins = (item?: StoreItem | null) => Number(item?.baseCoins ?? item?.coinAmount ?? 0);
@@ -352,7 +448,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           <img 
             alt="Server Logo" 
             className="w-16 h-16 rounded-xl mb-4 object-cover border-2 border-slate-700 shadow-lg transform hover:scale-105 transition-all" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0rulQzv0m0tH8eJIAhPmYx58pkh5NyqFcZ7Svvt6qbXLfO6aqY5_bnQF5Th-ckwDQ-hLLAnlqhyr4PuY0eG28L2raQPw_kdPGwFOaJFwb4UcifCF8bJuqsTUbJIjXu-bis_PUFZZcKX2Ek8IzbTfCXfjAK0jREK8byOZPKCnr2LitVLUVp_vDMGxHujYq37H0H3vSeel6OkYNhOYdf_2Ic-QSAGMOZ_gOICpQUOEQhcAsz6RM7XAlRc4WtkbLXNhfJ8TZLXMqulo"
+            src="/logo.png"
           />
           <h1 className="font-display font-extrabold text-lg text-white tracking-wider uppercase text-center">
             EMERALD REALM
@@ -459,7 +555,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           <img 
             alt="Server Logo" 
             className="w-8 h-8 rounded-lg object-cover" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0rulQzv0m0tH8eJIAhPmYx58pkh5NyqFcZ7Svvt6qbXLfO6aqY5_bnQF5Th-ckwDQ-hLLAnlqhyr4PuY0eG28L2raQPw_kdPGwFOaJFwb4UcifCF8bJuqsTUbJIjXu-bis_PUFZZcKX2Ek8IzbTfCXfjAK0jREK8byOZPKCnr2LitVLUVp_vDMGxHujYq37H0H3vSeel6OkYNhOYdf_2Ic-QSAGMOZ_gOICpQUOEQhcAsz6RM7XAlRc4WtkbLXNhfJ8TZLXMqulo"
+            src="/logo.png"
           />
           <span className="font-display font-black text-indigo-400 tracking-wider">CỔNG DỊCH VỤ</span>
         </div>
@@ -543,23 +639,101 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
 
             {/* Bell Indicator */}
-            <button 
-              onClick={() => alert('Không có thông báo mới.')}
-              className="p-2 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors relative"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full border-2 border-white" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationOpen((prev) => !prev)}
+                className="p-2 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors relative"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <>
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                    <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  </>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isNotificationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    className="absolute right-0 top-12 z-[9999] w-[min(92vw,420px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">Thong bao</p>
+                        <p className="text-[11px] font-semibold text-slate-500">{unreadCount} chua doc</p>
+                      </div>
+                      <button
+                        onClick={handleReadAllNotifications}
+                        disabled={unreadCount === 0}
+                        className="rounded-lg px-3 py-1.5 text-[11px] font-black text-indigo-600 hover:bg-indigo-50 disabled:text-slate-300 disabled:hover:bg-transparent"
+                      >
+                        Doc tat ca
+                      </button>
+                    </div>
+
+                    <div className="max-h-[420px] overflow-y-auto">
+                      {userNotifications.length === 0 ? (
+                        <div className="px-4 py-10 text-center text-sm font-semibold text-slate-400">
+                          Chua co thong bao nao.
+                        </div>
+                      ) : (
+                        userNotifications.map((item) => (
+                          <button
+                            key={item.receiptId}
+                            onClick={() => handleNotificationClick(item)}
+                            className={`w-full border-b border-slate-100 px-4 py-3 text-left transition-colors ${
+                              item.isRead ? 'bg-white hover:bg-slate-50' : 'bg-indigo-50 hover:bg-indigo-100'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${item.isRead ? 'bg-slate-300' : 'bg-red-500'}`} />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className={`truncate text-sm ${item.isRead ? 'font-bold text-slate-700' : 'font-black text-slate-950'}`}>
+                                    {item.title}
+                                  </p>
+                                  <span className="shrink-0 text-[10px] font-semibold text-slate-400">
+                                    {formatNotificationTime(item.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-slate-500">
+                                  {item.message}
+                                </p>
+                                <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                  {item.type}
+                                </span>
+                                {selectedNotificationId === item.receiptId && (
+                                  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-sm">
+                                    {item.message}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Avatar Profile */}
             <div 
               onClick={() => setActiveTab('Cài đặt')}
-              className="w-10 h-10 rounded-full border border-slate-200 overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors shadow"
+              className="w-11 h-11 rounded-[14px] bg-white border border-slate-200 overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors shadow-[0_10px_30px_rgba(0,0,0,.08)]"
             >
               <img 
-                alt="Minecraft Character Visor" 
-                className="w-full h-full object-cover" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXfIooe1QQ4Jl9I4ZVV52LPvlOoe-iyRipUOFrqoJs2xjt9cMh5FrSj63cZHqhQrTSrRbHT6YPdt47tO5gsGLUvPTrDykqBJHZQfT8hj-vc5wVVe0zjfYTNHO3yNjVk6KC1qa4FevwkIBlmbGLS1aj0jxaBHhWWv9eVqhqo3lWHErpdK9VG1J84i94d9A7OrFhamq8Kqy3nNWmtxkPMQlLP47rnfn5R036CGHiCUCSbd2onl8AXtNgr0IFDom2X9tArogFUMXF3Hw"
+                alt={`${linkedMcName || 'Steve'} Minecraft avatar`}
+                className="w-full h-full object-cover object-center"
+                src={playerAvatarUrl}
+                onError={handleAvatarError}
               />
             </div>
 
@@ -620,14 +794,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   </div>
 
                   <div className="z-10 w-full lg:w-auto flex justify-center">
-                    <div className="w-32 h-64 bg-slate-50 border border-slate-100 rounded-2xl shadow-md relative overflow-hidden flex items-center justify-center group flex-col p-2">
-                      <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
+                    <div className="w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 bg-white border border-slate-100 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,.08)] relative overflow-hidden flex items-center justify-center group">
                       <img 
-                        alt="Steve model skin rendering" 
-                        className="w-full h-full object-contain opacity-95 group-hover:scale-105 transition-transform z-10" 
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCE7LIekechAs7RUaOoK6U0xrdfZRK_IfCUcU5do0EbYVEfxDC6TFrM4VsLL9VWNJrgmVsEhxVwEK07KiV5pHpJYAVeal3fb2cXqP1uFK1NWCBR6I-cTi7vf0jAVV88fLghJ2xcLDbVmZpF9_vkdBfHxkAetlQjCArcx6oUDRTDtEA4SWXMIvcG2eUd3qFrIZaAqreOB4-1lq2dVSkuPnesBi9ph-PKvmkojvaYd0GifUruUWY8qdUzfpfH_otgF-PoF7b-FVhB3YI"
+                        alt={`${linkedMcName || 'Steve'} Minecraft avatar`}
+                        className="w-full h-full object-cover object-center group-hover:scale-[1.03] transition-transform"
+                        src={playerAvatarUrl}
+                        onError={handleAvatarError}
                       />
-                      <span className="text-[9px] font-mono font-bold text-slate-400 z-20 hover:text-indigo-600 tracking-wider">AVATAR VIEW</span>
                     </div>
                   </div>
 
@@ -1332,8 +1505,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               
               <div className="md:col-span-1 space-y-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center border border-indigo-100">
-                    <Gem className="text-indigo-600 w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200 overflow-hidden">
+                    <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full object-cover" />
                   </div>
                   <span className="font-display font-extrabold tracking-wider text-slate-900 text-base">EMERALD REALM</span>
                 </div>

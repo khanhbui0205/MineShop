@@ -4,7 +4,7 @@ import {
   TrendingUp, Users, Coins, Crown, Activity, ShoppingBag,
   Trash2, Edit2, PlusCircle, Clock, X, Eye, EyeOff, ToggleLeft, ToggleRight
 } from 'lucide-react';
-import type { CoinPackage, AuditLog, AdminStats } from '../types';
+import type { CoinPackage, AuditLog, AdminStats, AdminTab } from '../types';
 import { formatVND } from '../lib/utils';
 
 interface DashboardAdminProps {
@@ -15,7 +15,7 @@ interface DashboardAdminProps {
   onUpdatePackage: (pkg: CoinPackage) => void;
   onDeletePackage: (id: string) => void;
   onTogglePackage: (id: string) => void;
-  onTabChange: (tab: 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Server Control' | 'Cài đặt') => void;
+  onTabChange: (tab: AdminTab) => void;
 }
 
 export default function DashboardAdmin({

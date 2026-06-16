@@ -12,6 +12,7 @@ const packageRoutes = require('./routes/packageRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const serverControlRoutes = require('./routes/admin/serverControlRoutes');
 const minecraftRoutes = require('./routes/minecraftRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -48,7 +49,7 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
@@ -73,6 +74,7 @@ apiRouter.use('/packages', packageRoutes);
 apiRouter.use('/payment', paymentRoutes);
 apiRouter.use('/payos', paymentRoutes);
 apiRouter.use('/minecraft', minecraftRoutes);
+apiRouter.use('/notifications', notificationRoutes);
 
 // Health check inside apiRouter
 apiRouter.get('/health', (req, res) => {
