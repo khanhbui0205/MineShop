@@ -1,6 +1,7 @@
 const minecraftService = require('../services/minecraftService');
 const User = require('../models/User');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
+const { processPendingRewardsForUsername, PLAYER_NAME_REGEX } = require('../services/rewardService');
 
 // @desc    Get Minecraft player balance (verify player exists first)
 // @route   GET /api/minecraft/balance/:username
@@ -164,5 +165,35 @@ exports.checkPlayer = async (req, res) => {
   } catch (error) {
     console.error('[MINECRAFT CONTROLLER] checkPlayer error:', error.message);
     res.status(500).json({ success: false, playerExists: false, error: 'SERVER_ERROR' });
+  }
+};
+
+// @desc    Process pending rewards when a Minecraft player logs in
+// @route   POST /api/minecraft/player-login
+// @access  Server webhook (guarded by MINECRAFT_WEBHOOK_SECRET when configured)
+exports.handlePlayerLogin = async (req, res) => {
+  try {
+    const configuredSecret = process.env.MINECRAFT_WEBHOOK_SECRET;
+    if (configuredSecret) {
+      const providedSecret = req.headers['x-minecraft-secret'] || req.body.secret;
+      if (providedSecret !== configuredSecret) {
+        return res.status(401).json({ success: false, message: 'Unauthorized Minecraft webhook' });
+      }
+    }
+
+    const username = String(req.body.username || req.body.playerName || '').trim();
+    if (!PLAYER_NAME_REGEX.test(username)) {
+      return res.status(400).json({ success: false, message: 'Username Minecraft khong hop le' });
+    }
+
+    const result = await processPendingRewardsForUsername(username);
+    res.json({
+      success: true,
+      username,
+      ...result,
+    });
+  } catch (error) {
+    console.error('[MINECRAFT CONTROLLER] handlePlayerLogin error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

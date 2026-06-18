@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, type SyntheticEvent } from 'react';
 import { 
   Home, 
   ShoppingCart, 
+  Ticket,
   History as HistoryIcon, 
   Settings as SettingsIcon, 
   HelpCircle, 
@@ -50,6 +51,7 @@ import PromotionBadge from './PromotionBadge';
 import notificationService from '../services/notificationService';
 import type { NotificationItem } from '../types';
 import { toast } from 'react-hot-toast';
+import RedeemCodePanel from './RedeemCodePanel';
 
 
 interface DashboardScreenProps {
@@ -487,6 +489,18 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             <span>Cửa hàng</span>
           </button>
 
+          <button 
+            onClick={() => setActiveTab('Redeem Code')}
+            className={`flex items-center gap-4 py-3 px-4 rounded-lg w-full transition-all duration-300 cursor-pointer ${
+              activeTab === 'Redeem Code' 
+              ? 'bg-indigo-600 font-semibold text-white shadow-lg shadow-indigo-900/30' 
+              : 'text-slate-400 hover:bg-slate-800/60 hover:text-indigo-400 text-left font-medium'
+            }`}
+          >
+            <Ticket className="w-5 h-5" />
+            <span>Redeem Code</span>
+          </button>
+
           {/* Tab HISTORY */}
           <button 
             onClick={() => setActiveTab('Lịch sử')}
@@ -595,6 +609,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
         >
           <ShoppingCart className="w-5 h-5" />
           <span className="text-[10px] font-semibold">Cửa hàng</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('Redeem Code')}
+          className={`flex flex-col items-center gap-1 ${activeTab === 'Redeem Code' ? 'text-indigo-400' : 'text-slate-400'}`}
+        >
+          <Ticket className="w-5 h-5" />
+          <span className="text-[10px] font-semibold">Redeem</span>
         </button>
         <button 
           onClick={() => setActiveTab('Lịch sử')}
@@ -1252,6 +1273,21 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
                 </section>
 
+              </motion.div>
+            )}
+
+            {/* TABS 3: REDEEM CODE MODULE */}
+            {activeTab === 'Redeem Code' && (
+              <motion.div 
+                key="redeem-tab"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+              >
+                <RedeemCodePanel
+                  accountUsername={user.username}
+                  onBalanceChange={(balance) => setUserProfile((prev) => ({ ...prev, balance }))}
+                />
               </motion.div>
             )}
 

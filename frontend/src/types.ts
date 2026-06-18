@@ -137,6 +137,12 @@ export interface AdminStats {
   totalRevenue: number;
   totalTransactions: number;
   totalPackages: number;
+  totalCodes?: number;
+  totalRedeems?: number;
+  activeCodes?: number;
+  expiredCodes?: number;
+  pendingRewards?: number;
+  completedRewards?: number;
 }
 
 export interface ServerCommand {
@@ -168,7 +174,45 @@ export interface NotificationItem {
   readAt?: string | null;
 }
 
-export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Lịch sử' | 'Cài đặt';
-export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Server Control' | 'Thông báo' | 'Cài đặt';
+export type RedeemRewardType = 'COIN' | 'ITEM';
+export type RewardStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
+
+export interface RedeemItem {
+  material: string;
+  amount: number;
+}
+
+export interface RedeemCode {
+  _id: string;
+  code: string;
+  name: string;
+  description?: string;
+  rewardType: RedeemRewardType;
+  coinAmount: number;
+  items: RedeemItem[];
+  maxUses: number;
+  usedCount: number;
+  isActive: boolean;
+  newbieOnly: boolean;
+  maxPlayerAgeDays: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CodeRedemption {
+  _id: string;
+  codeId?: RedeemCode | string;
+  userId?: { _id: string; username: string; email?: string } | string;
+  username: string;
+  code: string;
+  status: RewardStatus;
+  redeemedAt: string;
+  createdAt?: string;
+}
+
+export type PortalTab = 'Trang chủ' | 'Cửa hàng' | 'Redeem Code' | 'Lịch sử' | 'Cài đặt';
+export type AdminTab = 'Tổng quan' | 'Người dùng' | 'Doanh thu' | 'Thanh toán' | 'Redeem Code' | 'Server Control' | 'Thông báo' | 'Cài đặt';
 export type AuthScreenState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'ADMIN';
 

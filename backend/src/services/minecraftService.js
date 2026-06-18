@@ -1,5 +1,78 @@
 const rconService = require('./rconService');
 
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripMinecraftFormatting(value) {
+  return String(value || '')
+    .replace(/(?:§|Â§|&)[0-9A-FK-OR]/gi, '')
+    .replace(/\u001b\[[0-9;]*m/g, '');
+}
+
+function normalizeNumericToken(token) {
+  let value = String(token || '').trim();
+  if (!value) return null;
+
+  value = value.replace(/[^\d,.\-]/g, '').replace(/(?!^)-/g, '');
+  if (!value || value === '-' || !/\d/.test(value)) return null;
+
+  const isNegative = value.startsWith('-');
+  if (isNegative) value = value.slice(1);
+
+  const lastComma = value.lastIndexOf(',');
+  const lastDot = value.lastIndexOf('.');
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      value = value.replace(/\./g, '').replace(',', '.');
+    } else {
+      value = value.replace(/,/g, '');
+    }
+  } else if (lastComma !== -1) {
+    const parts = value.split(',');
+    const lastPart = parts[parts.length - 1];
+    const isThousands = parts.length > 1
+      && parts.slice(1).every((part) => part.length === 3)
+      && parts[0].length <= 3;
+    value = isThousands || lastPart.length === 3
+      ? parts.join('')
+      : `${parts.slice(0, -1).join('')}.${lastPart}`;
+  } else if (lastDot !== -1) {
+    const parts = value.split('.');
+    const lastPart = parts[parts.length - 1];
+    const isThousands = parts.length > 1
+      && parts.slice(1).every((part) => part.length === 3)
+      && parts[0].length <= 3;
+    if (isThousands) {
+      value = parts.join('');
+    } else if (parts.length > 2) {
+      value = `${parts.slice(0, -1).join('')}.${lastPart}`;
+    }
+  }
+
+  const parsed = Number(`${isNegative ? '-' : ''}${value}`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseBalanceResponse(response, username) {
+  const usernameRegex = new RegExp(escapeRegex(username), 'gi');
+  const cleaned = stripMinecraftFormatting(response)
+    .replace(usernameRegex, '')
+    .replace(/\b(balance|bal|money|has|have|of|is|currently|coins?|xu|vnd|dollars?|wallet)\b/gi, ' ')
+    .replace(/[$€£₫]/g, ' ')
+    .replace(/'/g, ' ')
+    .trim();
+
+  const candidates = cleaned.match(/-?\d[\d,.\s]*/g) || [];
+  const balances = candidates
+    .map((candidate) => normalizeNumericToken(candidate.replace(/\s+/g, '')))
+    .filter((value) => value !== null);
+
+  if (balances.length === 0) return 0;
+  return balances[balances.length - 1];
+}
+
 class MinecraftService {
   constructor() {
     this.balanceCache = new Map(); // username -> { balance, timestamp }

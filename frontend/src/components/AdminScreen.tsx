@@ -12,6 +12,7 @@ import {
   Terminal,
   TrendingUp,
   Send,
+  Ticket,
 } from 'lucide-react';
 import type { AdminTab, CoinPackage, Player, AuditLog, AdminStats } from '../types';
 import DashboardAdmin from './DashboardAdmin';
@@ -20,6 +21,7 @@ import PaymentAdmin from './PaymentAdmin';
 import ServerControlAdmin from './ServerControlAdmin';
 import RevenueAnalyticsAdmin from './RevenueAnalyticsAdmin';
 import NotificationAdmin from './NotificationAdmin';
+import RedeemCodeAdmin from './RedeemCodeAdmin';
 import api from '../lib/api';
 
 
@@ -39,6 +41,12 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
     totalRevenue: 0,
     totalTransactions: 0,
     totalPackages: 0,
+    totalCodes: 0,
+    totalRedeems: 0,
+    activeCodes: 0,
+    expiredCodes: 0,
+    pendingRewards: 0,
+    completedRewards: 0,
   });
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -255,6 +263,7 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
     { label: 'Người dùng', icon: <Users size={18} /> },
     { label: 'Doanh thu', icon: <TrendingUp size={18} /> },
     { label: 'Thanh toán', icon: <CreditCard size={18} /> },
+    { label: 'Redeem Code', icon: <Ticket size={18} /> },
     { label: 'Server Control', icon: <Terminal size={18} /> },
     { label: 'Thông báo', icon: <Send size={18} /> },
     { label: 'Cài đặt', icon: <Settings size={18} /> },
@@ -490,6 +499,18 @@ export default function AdminScreen({ user, onLogout, initialTab = 'Tổng quan'
                   transition={{ duration: 0.25 }}
                 >
                   <PaymentAdmin />
+                </motion.div>
+              )}
+
+              {activeTab === 'Redeem Code' && (
+                <motion.div
+                  key="redeem-code"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <RedeemCodeAdmin />
                 </motion.div>
               )}
 
