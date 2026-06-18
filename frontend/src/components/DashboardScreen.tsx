@@ -206,6 +206,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           duration: 5000,
         });
       });
+      eventSource.addEventListener('redeem:completed', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data);
+        window.dispatchEvent(new CustomEvent('redeem:completed', { detail: payload }));
+        toast.success('Reward redeem code đã được cấp vào tài khoản Minecraft của bạn.', {
+          position: 'top-right',
+          duration: 5000,
+        });
+      });
       eventSource.onerror = () => {
         console.warn('Notification stream disconnected; browser will retry.');
       };

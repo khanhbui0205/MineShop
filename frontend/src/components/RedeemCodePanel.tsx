@@ -43,6 +43,25 @@ export default function RedeemCodePanel({ accountUsername, onBalanceChange }: Re
     void loadHistory();
   }, []);
 
+  useEffect(() => {
+    const handleRedeemCompleted = (event: Event) => {
+      const payload = (event as CustomEvent).detail || {};
+      setHistory((current) => current.map((item) => (
+        item._id === payload.codeRedemptionId
+          ? { ...item, status: 'COMPLETED' }
+          : item
+      )));
+      setMessage({
+        type: 'success',
+        text: 'Reward pending đã được cấp thành công khi player online.',
+      });
+      void loadHistory();
+    };
+
+    window.addEventListener('redeem:completed', handleRedeemCompleted);
+    return () => window.removeEventListener('redeem:completed', handleRedeemCompleted);
+  }, []);
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const normalizedCode = code.trim().toUpperCase();

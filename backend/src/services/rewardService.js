@@ -1,9 +1,14 @@
 const rconService = require('./rconService');
 const PendingReward = require('../models/PendingReward');
 const CodeRedemption = require('../models/CodeRedemption');
+const { publishUserEvent } = require('./notificationRealtimeService');
 
 const PLAYER_NAME_REGEX = /^[a-zA-Z0-9_]{3,16}$/;
 const MATERIAL_REGEX = /^[A-Z0-9_]+$/;
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function stripMinecraftColorCodes(value) {
   return String(value || '').replace(/(?:\u00a7|Â§)[0-9a-fk-or]/gi, '');
@@ -85,20 +90,27 @@ async function isPlayerOnline(username) {
 
   try {
     const response = await rconService.sendCommand('list');
-    const onlinePlayers = parseOnlinePlayers(response);
-    if (onlinePlayers.some((playerName) => playerName.toLowerCase() === username.toLowerCase())) {
-      return true;
-    }
-
-    const cleanResponse = stripMinecraftColorCodes(response).toLowerCase();
-    const cleanUsername = username.toLowerCase();
-    const escapedUsername = cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const exactNameRegex = new RegExp(`(^|[\\s,:])${escapedUsername}($|[\\s,])`, 'i');
-    return exactNameRegex.test(cleanResponse);
+    return isUsernameInListResponse(username, response);
   } catch (error) {
     console.warn('[REWARD] Khong the kiem tra player online:', error.message);
     return false;
   }
+}
+
+function isUsernameInListResponse(username, listResponse) {
+  if (!PLAYER_NAME_REGEX.test(username || '')) return false;
+
+  const cleanResponse = stripMinecraftColorCodes(listResponse);
+  const onlinePlayers = parseOnlinePlayers(cleanResponse);
+  if (onlinePlayers.some((playerName) => playerName.toLowerCase() === username.toLowerCase())) {
+    return true;
+  }
+
+  const exactNameRegex = new RegExp(
+    `(^|[^a-zA-Z0-9_])${escapeRegex(username)}([^a-zA-Z0-9_]|$)`,
+    'i'
+  );
+  return exactNameRegex.test(cleanResponse);
 }
 
 function parseOnlinePlayers(listResponse) {
@@ -166,14 +178,14 @@ async function executeReward(username, reward) {
 
 async function markLinkedRedemptionCompleted(reward) {
   if (reward.codeRedemptionId) {
-    await CodeRedemption.updateOne(
+    return CodeRedemption.findOneAndUpdate(
       { _id: reward.codeRedemptionId, status: 'PENDING' },
-      { $set: { status: 'COMPLETED' } }
-    );
-    return;
+      { $set: { status: 'COMPLETED' } },
+      { new: true }
+    ).lean();
   }
 
-  await CodeRedemption.findOneAndUpdate(
+  return CodeRedemption.findOneAndUpdate(
     {
       userId: reward.userId,
       username: { $regex: new RegExp(`^${String(reward.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
@@ -182,6 +194,20 @@ async function markLinkedRedemptionCompleted(reward) {
     { $set: { status: 'COMPLETED' } },
     { sort: { redeemedAt: 1 } }
   );
+}
+
+function publishRedeemCompleted(reward, redemption, responses) {
+  publishUserEvent([reward.userId], 'redeem:completed', {
+    pendingRewardId: reward._id,
+    codeRedemptionId: redemption?._id || reward.codeRedemptionId || null,
+    username: reward.username,
+    rewardType: reward.rewardType,
+    coinAmount: reward.coinAmount,
+    items: reward.items,
+    status: 'COMPLETED',
+    processedAt: reward.processedAt,
+    responses,
+  });
 }
 
 async function createPendingReward({ userId, codeRedemptionId = null, username, rewardType, coinAmount = 0, items = [], commands = [] }) {
@@ -203,7 +229,7 @@ async function processPendingRewardsForUsername(username, options = {}) {
   assertSafePlayerName(username);
 
   const limit = Number(options.limit || 50);
-  const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedUsername = escapeRegex(username);
   const rewards = await PendingReward.find({
     username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') },
     status: 'PENDING',
@@ -218,7 +244,8 @@ async function processPendingRewardsForUsername(username, options = {}) {
       reward.status = 'COMPLETED';
       reward.processedAt = new Date();
       await reward.save();
-      await markLinkedRedemptionCompleted(reward);
+      const redemption = await markLinkedRedemptionCompleted(reward);
+      publishRedeemCompleted(reward, redemption, responses);
       processed.push({ rewardId: reward._id, responses });
     } catch (error) {
       console.warn(`[REWARD] Pending reward ${reward._id} failed:`, error.message);
@@ -236,10 +263,10 @@ async function processPendingRewardsForUsername(username, options = {}) {
 }
 
 async function processPendingRewardsForOnlinePlayers(options = {}) {
-  const onlinePlayers = await getOnlinePlayers();
-  if (onlinePlayers.length === 0) {
+  const pendingUsernames = await PendingReward.distinct('username', { status: 'PENDING' });
+  if (pendingUsernames.length === 0) {
     return {
-      onlinePlayers,
+      onlinePlayers: [],
       checked: 0,
       total: 0,
       completed: 0,
@@ -248,11 +275,25 @@ async function processPendingRewardsForOnlinePlayers(options = {}) {
     };
   }
 
-  const pendingUsernames = await PendingReward.distinct('username', { status: 'PENDING' });
-  const onlineLookup = new Map(onlinePlayers.map((playerName) => [playerName.toLowerCase(), playerName]));
+  let listResponse = '';
+  try {
+    listResponse = await rconService.sendCommand('list');
+  } catch (error) {
+    console.warn('[REWARD] Khong the lay danh sach player online:', error.message);
+    return {
+      onlinePlayers: [],
+      checked: 0,
+      total: 0,
+      completed: 0,
+      failed: pendingUsernames.length,
+      results: [],
+      error: error.message,
+    };
+  }
+
+  const onlinePlayers = parseOnlinePlayers(listResponse);
   const usernamesToProcess = pendingUsernames
-    .filter((username) => onlineLookup.has(String(username).toLowerCase()))
-    .map((username) => onlineLookup.get(String(username).toLowerCase()) || username);
+    .filter((username) => isUsernameInListResponse(String(username), listResponse));
 
   const results = [];
   for (const username of usernamesToProcess) {
@@ -278,6 +319,7 @@ module.exports = {
   validateRewardCommands,
   validateRewardPayload,
   parseOnlinePlayers,
+  isUsernameInListResponse,
   getOnlinePlayers,
   isPlayerOnline,
   executeReward,

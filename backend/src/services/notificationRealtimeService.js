@@ -32,7 +32,19 @@ function publishNotification(userIds, notification) {
   });
 }
 
+function publishUserEvent(userIds, event, payload) {
+  userIds.forEach((userId) => {
+    const clients = clientsByUserId.get(userId.toString());
+    if (!clients) return;
+
+    clients.forEach((res) => {
+      writeEvent(res, event, payload);
+    });
+  });
+}
+
 module.exports = {
   addNotificationClient,
   publishNotification,
+  publishUserEvent,
 };
