@@ -174,7 +174,7 @@ export interface NotificationItem {
   readAt?: string | null;
 }
 
-export type RedeemRewardType = 'COIN' | 'ITEM';
+export type RedeemRewardType = 'COIN' | 'ITEM' | 'BOTH';
 export type RewardStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
 
 export interface RedeemItem {

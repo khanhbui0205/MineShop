@@ -56,30 +56,31 @@ function validateRewardCommands(commands = []) {
 }
 
 function validateRewardPayload({ rewardType, coinAmount = 0, items = [] }) {
-  if (!['COIN', 'ITEM'].includes(rewardType)) {
+  if (!['COIN', 'ITEM', 'BOTH'].includes(rewardType)) {
     return 'Loai thuong khong hop le';
   }
 
-  if (rewardType === 'COIN') {
+  if (rewardType === 'COIN' || rewardType === 'BOTH') {
     if (!Number.isSafeInteger(Number(coinAmount)) || Number(coinAmount) <= 0) {
       return 'So coin phai lon hon 0';
     }
-    return null;
   }
 
-  if (!Array.isArray(items) || items.length === 0) {
-    return 'Vui long them it nhat 1 item';
-  }
+  if (rewardType === 'ITEM' || rewardType === 'BOTH') {
+    if (!Array.isArray(items) || items.length === 0) {
+      return 'Vui long them it nhat 1 item';
+    }
 
-  const normalizedItems = normalizeItems(items);
-  const invalidItem = normalizedItems.find((item) => (
-    !MATERIAL_REGEX.test(item.material)
-    || !Number.isSafeInteger(item.amount)
-    || item.amount <= 0
-  ));
+    const normalizedItems = normalizeItems(items);
+    const invalidItem = normalizedItems.find((item) => (
+      !MATERIAL_REGEX.test(item.material)
+      || !Number.isSafeInteger(item.amount)
+      || item.amount <= 0
+    ));
 
-  if (invalidItem) {
-    return 'Material hoac so luong item khong hop le';
+    if (invalidItem) {
+      return 'Material hoac so luong item khong hop le';
+    }
   }
 
   return null;
@@ -143,25 +144,31 @@ function buildRewardCommands(username, reward) {
     return customCommands.map((command) => command.replaceAll('{player}', username));
   }
 
-  if (reward.rewardType === 'COIN') {
+  const commands = [];
+
+  if (reward.rewardType === 'COIN' || reward.rewardType === 'BOTH') {
     const coinAmount = Number(reward.coinAmount || 0);
     if (!Number.isSafeInteger(coinAmount) || coinAmount <= 0) {
       throw new Error('So coin khong hop le');
     }
-    return [`eco give ${username} ${coinAmount}`];
+    commands.push(`eco give ${username} ${coinAmount}`);
   }
 
-  const items = normalizeItems(reward.items || []);
-  if (!items.length) {
-    throw new Error('Danh sach item trong');
-  }
-
-  return items.map((item) => {
-    if (!MATERIAL_REGEX.test(item.material) || !Number.isSafeInteger(item.amount) || item.amount <= 0) {
-      throw new Error('Item reward khong hop le');
+  if (reward.rewardType === 'ITEM' || reward.rewardType === 'BOTH') {
+    const items = normalizeItems(reward.items || []);
+    if (!items.length) {
+      throw new Error('Danh sach item trong');
     }
-    return `give ${username} ${item.material.toLowerCase()} ${item.amount}`;
-  });
+
+    items.forEach((item) => {
+      if (!MATERIAL_REGEX.test(item.material) || !Number.isSafeInteger(item.amount) || item.amount <= 0) {
+        throw new Error('Item reward khong hop le');
+      }
+      commands.push(`give ${username} ${item.material.toLowerCase()} ${item.amount}`);
+    });
+  }
+
+  return commands;
 }
 
 async function executeReward(username, reward) {
@@ -218,8 +225,8 @@ async function createPendingReward({ userId, codeRedemptionId = null, username, 
     codeRedemptionId,
     username,
     rewardType,
-    coinAmount: rewardType === 'COIN' ? Number(coinAmount) : 0,
-    items: rewardType === 'ITEM' ? normalizeItems(items) : [],
+    coinAmount: rewardType !== 'ITEM' ? Number(coinAmount) : 0,
+    items: rewardType !== 'COIN' ? normalizeItems(items) : [],
     commands: normalizeCommands(commands),
     status: 'PENDING',
   });

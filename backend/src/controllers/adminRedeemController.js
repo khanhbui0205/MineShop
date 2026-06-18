@@ -19,13 +19,19 @@ function parseDateInput(value) {
 }
 
 function defaultCommandsForReward({ rewardType, coinAmount = 0, items = [] }) {
-  if (rewardType === 'COIN') {
-    return [`eco give {player} ${Number(coinAmount || 0)}`];
+  const commands = [];
+
+  if (rewardType === 'COIN' || rewardType === 'BOTH') {
+    commands.push(`eco give {player} ${Number(coinAmount || 0)}`);
   }
 
-  return normalizeItems(items).map((item) => (
-    `give {player} ${item.material.toLowerCase()} ${item.amount}`
-  ));
+  if (rewardType === 'ITEM' || rewardType === 'BOTH') {
+    commands.push(...normalizeItems(items).map((item) => (
+      `give {player} ${item.material.toLowerCase()} ${item.amount}`
+    )));
+  }
+
+  return commands;
 }
 
 function buildCodePayload(body, existing = {}) {
@@ -73,8 +79,8 @@ function buildCodePayload(body, existing = {}) {
       name,
       description: body.description !== undefined ? String(body.description || '').trim() : existing.description ?? '',
       rewardType,
-      coinAmount: rewardType === 'COIN' ? coinAmount : 0,
-      items: rewardType === 'ITEM' ? items : [],
+      coinAmount: rewardType !== 'ITEM' ? coinAmount : 0,
+      items: rewardType !== 'COIN' ? items : [],
       commands,
       maxUses,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : existing.isActive ?? true,

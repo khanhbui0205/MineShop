@@ -48,7 +48,7 @@ async function deliverRedeemReward(user, code, redemption) {
     commands: code.commands || [],
   };
 
-  if (code.rewardType === 'COIN') {
+  if (code.rewardType !== 'ITEM') {
     await User.updateOne({ _id: user._id }, { $inc: { balance: rewardPayload.coinAmount } });
   }
 
@@ -169,7 +169,7 @@ exports.redeemCode = async (req, res) => {
 exports.getRedeemHistory = async (req, res) => {
   try {
     const history = await CodeRedemption.find({ userId: req.user._id })
-      .populate('codeId', 'name description rewardType coinAmount items')
+      .populate('codeId', 'name description rewardType coinAmount items commands')
       .sort({ redeemedAt: -1 })
       .limit(100)
       .lean();

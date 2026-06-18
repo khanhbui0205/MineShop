@@ -39,7 +39,7 @@ const redeemCodeSchema = new mongoose.Schema(
     },
     rewardType: {
       type: String,
-      enum: ['COIN', 'ITEM'],
+      enum: ['COIN', 'ITEM', 'BOTH'],
       required: true,
     },
     coinAmount: {

@@ -11,6 +11,10 @@ interface RedeemCodePanelProps {
 function formatReward(code?: RedeemCode | string) {
   if (!code || typeof code === 'string') return 'Reward';
   if (code.rewardType === 'COIN') return `${Number(code.coinAmount || 0).toLocaleString('vi-VN')} Coins`;
+  if (code.rewardType === 'BOTH') {
+    const itemText = (code.items || []).map((item) => `${item.material} x${item.amount}`).join(', ');
+    return `${Number(code.coinAmount || 0).toLocaleString('vi-VN')} Coins${itemText ? ` + ${itemText}` : ''}`;
+  }
   return (code.items || []).map((item) => `${item.material} x${item.amount}`).join(', ');
 }
 

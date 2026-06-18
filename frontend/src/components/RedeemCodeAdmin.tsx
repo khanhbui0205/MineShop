@@ -15,11 +15,12 @@ interface CodeForm {
   code: string;
   name: string;
   description: string;
-  rewardType: 'COIN' | 'ITEM';
+  rewardType: 'COIN' | 'ITEM' | 'BOTH';
   coinAmount: number;
   items: RedeemItem[];
   commands: string;
   maxUses: number;
+  maxUsesUnlimited: boolean;
   isActive: boolean;
   newbieOnly: boolean;
   maxPlayerAgeDays: number;
@@ -36,6 +37,7 @@ const emptyForm: CodeForm = {
   items: [{ material: 'DIAMOND', amount: 1 }] as RedeemItem[],
   commands: 'eco give {player} 10000',
   maxUses: 0,
+  maxUsesUnlimited: true,
   isActive: true,
   newbieOnly: false,
   maxPlayerAgeDays: 7,
@@ -50,6 +52,10 @@ function toDateInput(value?: string | null) {
 
 function formatReward(code: RedeemCode) {
   if (code.rewardType === 'COIN') return `${Number(code.coinAmount || 0).toLocaleString('vi-VN')} Coins`;
+  if (code.rewardType === 'BOTH') {
+    const itemText = code.items.map((item) => `${item.material} x${item.amount}`).join(', ');
+    return `${Number(code.coinAmount || 0).toLocaleString('vi-VN')} Coins${itemText ? ` + ${itemText}` : ''}`;
+  }
   return code.items.map((item) => `${item.material} x${item.amount}`).join(', ');
 }
 
@@ -67,12 +73,46 @@ function buildItemCommands(items: RedeemItem[]) {
     .join('\n');
 }
 
+function buildRewardCommands(rewardType: 'COIN' | 'ITEM' | 'BOTH', coinAmount: number, items: RedeemItem[]) {
+  const commands: string[] = [];
+  if (rewardType === 'COIN' || rewardType === 'BOTH') commands.push(buildCoinCommand(coinAmount));
+  if (rewardType === 'ITEM' || rewardType === 'BOTH') commands.push(buildItemCommands(items));
+  return commands.filter(Boolean).join('\n');
+}
+
 function isAutoCoinCommand(command: string) {
   return /^eco give \{player\} \d+$/i.test(command.trim());
 }
 
-function shouldSyncItemCommands(command: string, items: RedeemItem[]) {
-  return !command.trim() || command.trim() === buildItemCommands(items).trim();
+function shouldSyncRewardCommands(command: string, rewardType: 'COIN' | 'ITEM' | 'BOTH', coinAmount: number, items: RedeemItem[]) {
+  return !command.trim() || command.trim() === buildRewardCommands(rewardType, coinAmount, items).trim();
+}
+
+function ToggleButton({
+  checked,
+  onChange,
+  onLabel,
+  offLabel,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  onLabel: string;
+  offLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`inline-flex min-w-[110px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition-colors ${
+        checked
+          ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+          : 'border-white/10 bg-white/5 text-slate-400'
+      }`}
+    >
+      <span className={`h-4 w-4 rounded-full transition-colors ${checked ? 'bg-emerald-300' : 'bg-slate-500'}`} />
+      {checked ? onLabel : offLabel}
+    </button>
+  );
 }
 
 export default function RedeemCodeAdmin() {
@@ -137,10 +177,9 @@ export default function RedeemCodeAdmin() {
       items: code.items?.length ? code.items : [{ material: 'DIAMOND', amount: 1 }],
       commands: code.commands?.length
         ? code.commands.join('\n')
-        : (code.rewardType === 'COIN'
-          ? buildCoinCommand(code.coinAmount || 0)
-          : buildItemCommands(code.items || [])),
+        : buildRewardCommands(code.rewardType, code.coinAmount || 0, code.items || []),
       maxUses: code.maxUses || 0,
+      maxUsesUnlimited: !code.maxUses || code.maxUses <= 0,
       isActive: code.isActive,
       newbieOnly: code.newbieOnly,
       maxPlayerAgeDays: code.maxPlayerAgeDays || 7,
@@ -159,8 +198,8 @@ export default function RedeemCodeAdmin() {
       return {
         ...current,
         items: nextItems,
-        commands: current.rewardType === 'ITEM' && shouldSyncItemCommands(current.commands, current.items)
-          ? buildItemCommands(nextItems)
+        commands: current.rewardType !== 'COIN' && shouldSyncRewardCommands(current.commands, current.rewardType, current.coinAmount, current.items)
+          ? buildRewardCommands(current.rewardType, current.coinAmount, nextItems)
           : current.commands,
       };
     });
@@ -176,7 +215,7 @@ export default function RedeemCodeAdmin() {
       code: form.code.trim().toUpperCase(),
       name: form.name.trim(),
       coinAmount: Number(form.coinAmount),
-      maxUses: Number(form.maxUses),
+      maxUses: form.maxUsesUnlimited ? 0 : Number(form.maxUses),
       maxPlayerAgeDays: Number(form.maxPlayerAgeDays),
       items: form.items.map((item) => ({
         material: item.material.trim().toUpperCase(),
@@ -396,28 +435,55 @@ export default function RedeemCodeAdmin() {
                 <select
                   value={form.rewardType}
                   onChange={(e) => {
-                    const rewardType = e.target.value as 'COIN' | 'ITEM';
+                    const rewardType = e.target.value as 'COIN' | 'ITEM' | 'BOTH';
                     setForm({
                       ...form,
                       rewardType,
-                      commands: rewardType === 'COIN'
-                        ? buildCoinCommand(form.coinAmount || 0)
-                        : buildItemCommands(form.items),
+                      commands: buildRewardCommands(rewardType, form.coinAmount || 0, form.items),
                     });
                   }}
                   className="admin-select w-full rounded-xl border border-white/10 px-4 py-3"
                 >
                   <option value="COIN">COIN</option>
                   <option value="ITEM">ITEM</option>
+                  <option value="BOTH">COIN + ITEM</option>
                 </select>
               </label>
-              <label className="space-y-1.5">
+              <div className="space-y-1.5">
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">Giới hạn lượt dùng</span>
-                <input type="number" min={0} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: Number(e.target.value) })} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white" />
-              </label>
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, maxUsesUnlimited: true, maxUses: 0 })}
+                    className={`rounded-lg px-3 py-2.5 text-xs font-black transition-colors ${
+                      form.maxUsesUnlimited ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    Vô hạn
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, maxUsesUnlimited: false, maxUses: form.maxUses > 0 ? form.maxUses : 1 })}
+                    className={`rounded-lg px-3 py-2.5 text-xs font-black transition-colors ${
+                      !form.maxUsesUnlimited ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    Giới hạn
+                  </button>
+                </div>
+                {!form.maxUsesUnlimited && (
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.maxUses}
+                    onChange={(e) => setForm({ ...form, maxUses: Math.max(1, Number(e.target.value) || 1) })}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  />
+                )}
+              </div>
             </div>
 
-            {form.rewardType === 'COIN' ? (
+            {form.rewardType !== 'ITEM' && (
               <label className="mt-4 block space-y-1.5">
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">Số coin</span>
                 <input
@@ -429,8 +495,8 @@ export default function RedeemCodeAdmin() {
                     setForm({
                       ...form,
                       coinAmount,
-                      commands: isAutoCoinCommand(form.commands)
-                        ? buildCoinCommand(coinAmount)
+                      commands: isAutoCoinCommand(form.commands) || shouldSyncRewardCommands(form.commands, form.rewardType, form.coinAmount, form.items)
+                        ? buildRewardCommands(form.rewardType, coinAmount, form.items)
                         : form.commands,
                     });
                   }}
@@ -438,7 +504,9 @@ export default function RedeemCodeAdmin() {
                   required
                 />
               </label>
-            ) : (
+            )}
+
+            {form.rewardType !== 'COIN' && (
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-widest text-slate-400">Items</span>
@@ -449,8 +517,8 @@ export default function RedeemCodeAdmin() {
                       setForm({
                         ...form,
                         items: nextItems,
-                        commands: shouldSyncItemCommands(form.commands, form.items)
-                          ? buildItemCommands(nextItems)
+                        commands: shouldSyncRewardCommands(form.commands, form.rewardType, form.coinAmount, form.items)
+                          ? buildRewardCommands(form.rewardType, form.coinAmount, nextItems)
                           : form.commands,
                       });
                     }}
@@ -470,8 +538,8 @@ export default function RedeemCodeAdmin() {
                         setForm({
                           ...form,
                           items: nextItems,
-                          commands: shouldSyncItemCommands(form.commands, form.items)
-                            ? buildItemCommands(nextItems)
+                          commands: shouldSyncRewardCommands(form.commands, form.rewardType, form.coinAmount, form.items)
+                            ? buildRewardCommands(form.rewardType, form.coinAmount, nextItems)
                             : form.commands,
                         });
                       }}
@@ -497,10 +565,15 @@ export default function RedeemCodeAdmin() {
             </label>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                 <span className="text-sm font-bold text-white">Code tân thủ</span>
-                <input type="checkbox" checked={form.newbieOnly} onChange={(e) => setForm({ ...form, newbieOnly: e.target.checked })} />
-              </label>
+                <ToggleButton
+                  checked={form.newbieOnly}
+                  onChange={(newbieOnly) => setForm({ ...form, newbieOnly })}
+                  onLabel="Tân thủ"
+                  offLabel="Không"
+                />
+              </div>
               <label className="space-y-1.5">
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">Số ngày tối đa</span>
                 <input type="number" min={0} value={form.maxPlayerAgeDays} onChange={(e) => setForm({ ...form, maxPlayerAgeDays: Number(e.target.value) })} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white" />
@@ -518,10 +591,15 @@ export default function RedeemCodeAdmin() {
               </label>
             </div>
 
-            <label className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
               <span className="text-sm font-bold text-white">Bật code</span>
-              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-            </label>
+              <ToggleButton
+                checked={form.isActive}
+                onChange={(isActive) => setForm({ ...form, isActive })}
+                onLabel="Đang bật"
+                offLabel="Đang tắt"
+              />
+            </div>
 
             <div className="mt-6 flex gap-3">
               <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-xl border border-white/10 py-3 font-bold text-slate-300">
