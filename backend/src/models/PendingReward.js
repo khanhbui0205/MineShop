@@ -25,6 +25,12 @@ const pendingRewardSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    codeRedemptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CodeRedemption',
+      default: null,
+      index: true,
+    },
     username: {
       type: String,
       required: true,
@@ -43,6 +49,10 @@ const pendingRewardSchema = new mongoose.Schema(
     },
     items: {
       type: [pendingRewardItemSchema],
+      default: [],
+    },
+    commands: {
+      type: [String],
       default: [],
     },
     status: {

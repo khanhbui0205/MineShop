@@ -41,38 +41,37 @@ async function deliverRedeemReward(user, code, redemption) {
     throw new Error('Username tai khoan khong hop le de cap thuong Minecraft');
   }
 
+  const rewardPayload = {
+    rewardType: code.rewardType,
+    coinAmount: Number(code.coinAmount || 0),
+    items: code.items || [],
+    commands: code.commands || [],
+  };
+
   if (code.rewardType === 'COIN') {
-    const coinAmount = Number(code.coinAmount || 0);
-    await User.updateOne({ _id: user._id }, { $inc: { balance: coinAmount } });
+    await User.updateOne({ _id: user._id }, { $inc: { balance: rewardPayload.coinAmount } });
+  }
 
-    const online = await isPlayerOnline(username);
-    if (online) {
-      try {
-        await executeReward(username, { rewardType: 'COIN', coinAmount });
-        redemption.status = 'COMPLETED';
-        await redemption.save();
-        return { deliveryStatus: 'COMPLETED', pendingReward: null };
-      } catch (error) {
-        console.warn('[REDEEM] Cap coin qua RCON that bai, tao pending:', error.message);
-      }
+  const online = await isPlayerOnline(username);
+  if (online) {
+    try {
+      await executeReward(username, rewardPayload);
+      redemption.status = 'COMPLETED';
+      await redemption.save();
+      return { deliveryStatus: 'COMPLETED', pendingReward: null };
+    } catch (error) {
+      console.warn('[REDEEM] Cap thuong qua RCON that bai, tao pending:', error.message);
     }
-
-    const pendingReward = await createPendingReward({
-      userId: user._id,
-      username,
-      rewardType: 'COIN',
-      coinAmount,
-    });
-    redemption.status = 'PENDING';
-    await redemption.save();
-    return { deliveryStatus: 'PENDING', pendingReward };
   }
 
   const pendingReward = await createPendingReward({
     userId: user._id,
+    codeRedemptionId: redemption._id,
     username,
-    rewardType: 'ITEM',
-    items: code.items,
+    rewardType: rewardPayload.rewardType,
+    coinAmount: rewardPayload.coinAmount,
+    items: rewardPayload.items,
+    commands: rewardPayload.commands,
   });
   redemption.status = 'PENDING';
   await redemption.save();

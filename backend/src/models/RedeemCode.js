@@ -51,6 +51,10 @@ const redeemCodeSchema = new mongoose.Schema(
       type: [redeemItemSchema],
       default: [],
     },
+    commands: {
+      type: [String],
+      default: [],
+    },
     maxUses: {
       type: Number,
       default: 0,

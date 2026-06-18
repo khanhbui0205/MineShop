@@ -1,7 +1,12 @@
 const RedeemCode = require('../models/RedeemCode');
 const CodeRedemption = require('../models/CodeRedemption');
 const PendingReward = require('../models/PendingReward');
-const { normalizeItems, validateRewardPayload } = require('../services/rewardService');
+const {
+  normalizeItems,
+  normalizeCommands,
+  validateRewardCommands,
+  validateRewardPayload,
+} = require('../services/rewardService');
 
 function normalizeCodeInput(value) {
   return String(value || '').trim().toUpperCase();
@@ -13,14 +18,34 @@ function parseDateInput(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function defaultCommandsForReward({ rewardType, coinAmount = 0, items = [] }) {
+  if (rewardType === 'COIN') {
+    return [`eco give {player} ${Number(coinAmount || 0)}`];
+  }
+
+  return normalizeItems(items).map((item) => (
+    `give {player} ${item.material.toLowerCase()} ${item.amount}`
+  ));
+}
+
 function buildCodePayload(body, existing = {}) {
   const rewardType = body.rewardType ?? existing.rewardType;
   const coinAmount = Number(body.coinAmount ?? existing.coinAmount ?? 0);
   const items = normalizeItems(body.items ?? existing.items ?? []);
+  let commands = normalizeCommands(body.commands ?? existing.commands ?? []);
   const rewardError = validateRewardPayload({ rewardType, coinAmount, items });
 
   if (rewardError) {
     return { error: rewardError };
+  }
+
+  if (commands.length === 0) {
+    commands = defaultCommandsForReward({ rewardType, coinAmount, items });
+  }
+
+  const commandError = validateRewardCommands(commands);
+  if (commandError) {
+    return { error: commandError };
   }
 
   const code = body.code !== undefined ? normalizeCodeInput(body.code) : existing.code;
@@ -50,6 +75,7 @@ function buildCodePayload(body, existing = {}) {
       rewardType,
       coinAmount: rewardType === 'COIN' ? coinAmount : 0,
       items: rewardType === 'ITEM' ? items : [],
+      commands,
       maxUses,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : existing.isActive ?? true,
       newbieOnly,
@@ -70,7 +96,7 @@ exports.getCodes = async (req, res) => {
       RedeemCode.find().sort({ createdAt: -1 }).lean(),
       CodeRedemption.find()
         .populate('userId', 'username email')
-        .populate('codeId', 'name rewardType coinAmount items')
+        .populate('codeId', 'name rewardType coinAmount items commands')
         .sort({ redeemedAt: -1 })
         .limit(100)
         .lean(),

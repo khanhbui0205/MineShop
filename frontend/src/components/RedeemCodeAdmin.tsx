@@ -18,6 +18,7 @@ interface CodeForm {
   rewardType: 'COIN' | 'ITEM';
   coinAmount: number;
   items: RedeemItem[];
+  commands: string;
   maxUses: number;
   isActive: boolean;
   newbieOnly: boolean;
@@ -33,6 +34,7 @@ const emptyForm: CodeForm = {
   rewardType: 'COIN',
   coinAmount: 10000,
   items: [{ material: 'DIAMOND', amount: 1 }] as RedeemItem[],
+  commands: 'eco give {player} 10000',
   maxUses: 0,
   isActive: true,
   newbieOnly: false,
@@ -49,6 +51,28 @@ function toDateInput(value?: string | null) {
 function formatReward(code: RedeemCode) {
   if (code.rewardType === 'COIN') return `${Number(code.coinAmount || 0).toLocaleString('vi-VN')} Coins`;
   return code.items.map((item) => `${item.material} x${item.amount}`).join(', ');
+}
+
+function buildCoinCommand(coinAmount: number) {
+  return `eco give {player} ${Number(coinAmount || 0)}`;
+}
+
+function buildItemCommands(items: RedeemItem[]) {
+  return items
+    .map((item) => {
+      const material = String(item.material || '').trim().toLowerCase() || 'diamond';
+      const amount = Number(item.amount || 1);
+      return `give {player} ${material} ${amount}`;
+    })
+    .join('\n');
+}
+
+function isAutoCoinCommand(command: string) {
+  return /^eco give \{player\} \d+$/i.test(command.trim());
+}
+
+function shouldSyncItemCommands(command: string, items: RedeemItem[]) {
+  return !command.trim() || command.trim() === buildItemCommands(items).trim();
 }
 
 export default function RedeemCodeAdmin() {
@@ -98,7 +122,7 @@ export default function RedeemCodeAdmin() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ ...emptyForm, items: [{ material: 'DIAMOND', amount: 1 }] });
+    setForm({ ...emptyForm, commands: buildCoinCommand(emptyForm.coinAmount), items: [{ material: 'DIAMOND', amount: 1 }] });
     setModalOpen(true);
   };
 
@@ -111,6 +135,11 @@ export default function RedeemCodeAdmin() {
       rewardType: code.rewardType,
       coinAmount: code.coinAmount || 0,
       items: code.items?.length ? code.items : [{ material: 'DIAMOND', amount: 1 }],
+      commands: code.commands?.length
+        ? code.commands.join('\n')
+        : (code.rewardType === 'COIN'
+          ? buildCoinCommand(code.coinAmount || 0)
+          : buildItemCommands(code.items || [])),
       maxUses: code.maxUses || 0,
       isActive: code.isActive,
       newbieOnly: code.newbieOnly,
@@ -122,12 +151,19 @@ export default function RedeemCodeAdmin() {
   };
 
   const updateItem = (index: number, patch: Partial<RedeemItem>) => {
-    setForm((current) => ({
-      ...current,
-      items: current.items.map((item, itemIndex) => (
+    setForm((current) => {
+      const nextItems = current.items.map((item, itemIndex) => (
         itemIndex === index ? { ...item, ...patch } : item
-      )),
-    }));
+      ));
+
+      return {
+        ...current,
+        items: nextItems,
+        commands: current.rewardType === 'ITEM' && shouldSyncItemCommands(current.commands, current.items)
+          ? buildItemCommands(nextItems)
+          : current.commands,
+      };
+    });
   };
 
   const submitForm = async (event: FormEvent) => {
@@ -146,6 +182,7 @@ export default function RedeemCodeAdmin() {
         material: item.material.trim().toUpperCase(),
         amount: Number(item.amount),
       })),
+      commands: form.commands.split('\n').map((command) => command.trim()).filter(Boolean),
       startDate: form.startDate || null,
       endDate: form.endDate || null,
     };
@@ -356,7 +393,20 @@ export default function RedeemCodeAdmin() {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="space-y-1.5">
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">Loại thưởng</span>
-                <select value={form.rewardType} onChange={(e) => setForm({ ...form, rewardType: e.target.value as 'COIN' | 'ITEM' })} className="admin-select w-full rounded-xl border border-white/10 px-4 py-3">
+                <select
+                  value={form.rewardType}
+                  onChange={(e) => {
+                    const rewardType = e.target.value as 'COIN' | 'ITEM';
+                    setForm({
+                      ...form,
+                      rewardType,
+                      commands: rewardType === 'COIN'
+                        ? buildCoinCommand(form.coinAmount || 0)
+                        : buildItemCommands(form.items),
+                    });
+                  }}
+                  className="admin-select w-full rounded-xl border border-white/10 px-4 py-3"
+                >
                   <option value="COIN">COIN</option>
                   <option value="ITEM">ITEM</option>
                 </select>
@@ -370,13 +420,42 @@ export default function RedeemCodeAdmin() {
             {form.rewardType === 'COIN' ? (
               <label className="mt-4 block space-y-1.5">
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">Số coin</span>
-                <input type="number" min={1} value={form.coinAmount} onChange={(e) => setForm({ ...form, coinAmount: Number(e.target.value) })} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white" required />
+                <input
+                  type="number"
+                  min={1}
+                  value={form.coinAmount}
+                  onChange={(e) => {
+                    const coinAmount = Number(e.target.value);
+                    setForm({
+                      ...form,
+                      coinAmount,
+                      commands: isAutoCoinCommand(form.commands)
+                        ? buildCoinCommand(coinAmount)
+                        : form.commands,
+                    });
+                  }}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  required
+                />
               </label>
             ) : (
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-widest text-slate-400">Items</span>
-                  <button type="button" onClick={() => setForm({ ...form, items: [...form.items, { material: '', amount: 1 }] })} className="text-xs font-black text-indigo-300">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextItems = [...form.items, { material: '', amount: 1 }];
+                      setForm({
+                        ...form,
+                        items: nextItems,
+                        commands: shouldSyncItemCommands(form.commands, form.items)
+                          ? buildItemCommands(nextItems)
+                          : form.commands,
+                      });
+                    }}
+                    className="text-xs font-black text-indigo-300"
+                  >
                     + Thêm item
                   </button>
                 </div>
@@ -384,13 +463,38 @@ export default function RedeemCodeAdmin() {
                   <div key={index} className="grid grid-cols-[1fr_120px_40px] gap-2">
                     <input value={item.material} onChange={(e) => updateItem(index, { material: e.target.value.toUpperCase() })} placeholder="DIAMOND" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white uppercase" required />
                     <input type="number" min={1} value={item.amount} onChange={(e) => updateItem(index, { amount: Number(e.target.value) })} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white" required />
-                    <button type="button" onClick={() => setForm({ ...form, items: form.items.filter((_, itemIndex) => itemIndex !== index) })} className="rounded-xl border border-white/10 text-slate-400 hover:text-rose-300">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextItems = form.items.filter((_, itemIndex) => itemIndex !== index);
+                        setForm({
+                          ...form,
+                          items: nextItems,
+                          commands: shouldSyncItemCommands(form.commands, form.items)
+                            ? buildItemCommands(nextItems)
+                            : form.commands,
+                        });
+                      }}
+                      className="rounded-xl border border-white/10 text-slate-400 hover:text-rose-300"
+                    >
                       <X className="w-4 h-4 mx-auto" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
+
+            <label className="mt-4 block space-y-1.5">
+              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Lá»‡nh RCON</span>
+              <textarea
+                value={form.commands}
+                onChange={(e) => setForm({ ...form, commands: e.target.value })}
+                rows={4}
+                placeholder={form.rewardType === 'COIN' ? 'eco give {player} 10000' : 'give {player} diamond 16'}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white font-mono text-sm"
+                required
+              />
+            </label>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">

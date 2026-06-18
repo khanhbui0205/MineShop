@@ -190,6 +190,7 @@ export interface RedeemCode {
   rewardType: RedeemRewardType;
   coinAmount: number;
   items: RedeemItem[];
+  commands: string[];
   maxUses: number;
   usedCount: number;
   isActive: boolean;
