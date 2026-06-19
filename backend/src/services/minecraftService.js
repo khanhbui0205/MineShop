@@ -1,9 +1,89 @@
 const rconService = require('./rconService');
+const rankService = require('./rankService');
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripMinecraftFormatting(value) {
+  return String(value || '')
+    .replace(/(?:§|Â§|Ã‚Â§|&)[0-9A-FK-OR]/gi, '')
+    .replace(/\u001b\[[0-9;]*m/g, '');
+}
+
+
+function normalizeNumericToken(token) {
+  let value = String(token || '').trim();
+  if (!value) return null;
+
+  value = value.replace(/[^\d,.\-]/g, '').replace(/(?!^)-/g, '');
+  if (!value || value === '-' || !/\d/.test(value)) return null;
+
+  const isNegative = value.startsWith('-');
+  if (isNegative) value = value.slice(1);
+
+  const lastComma = value.lastIndexOf(',');
+  const lastDot = value.lastIndexOf('.');
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      value = value.replace(/\./g, '').replace(',', '.');
+    } else {
+      value = value.replace(/,/g, '');
+    }
+  } else if (lastComma !== -1) {
+    const parts = value.split(',');
+    const lastPart = parts[parts.length - 1];
+    const isThousands = parts.length > 1
+      && parts.slice(1).every((part) => part.length === 3)
+      && parts[0].length <= 3;
+    value = isThousands || lastPart.length === 3
+      ? parts.join('')
+      : `${parts.slice(0, -1).join('')}.${lastPart}`;
+  } else if (lastDot !== -1) {
+    const parts = value.split('.');
+    const lastPart = parts[parts.length - 1];
+    const isThousands = parts.length > 1
+      && parts.slice(1).every((part) => part.length === 3)
+      && parts[0].length <= 3;
+    if (isThousands) {
+      value = parts.join('');
+    } else if (parts.length > 2) {
+      value = `${parts.slice(0, -1).join('')}.${lastPart}`;
+    }
+  }
+
+  const parsed = Number(`${isNegative ? '-' : ''}${value}`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseBalanceResponse(response, username) {
+  const usernameRegex = new RegExp(escapeRegex(username), 'gi');
+  const cleaned = stripMinecraftFormatting(response)
+    .replace(usernameRegex, '')
+    .replace(/\b(balance|bal|money|has|have|of|is|currently|coins?|xu|vnd|dollars?|wallet)\b/gi, ' ')
+    .replace(/[$â‚¬Â£â‚«]/g, ' ')
+    .replace(/'/g, ' ')
+    .trim();
+
+  const candidates = cleaned.match(/-?\d[\d,.\s]*/g) || [];
+  const balances = candidates
+    .map((candidate) => normalizeNumericToken(candidate.replace(/\s+/g, '')))
+    .filter((value) => value !== null);
+
+  if (balances.length === 0) return 0;
+  return balances[balances.length - 1];
+}
+
+function parseRankFromBalanceResponse(response, username) {
+  const cleanResponse = stripMinecraftFormatting(response);
+  return rankService.parseRankFromBalanceResponse(cleanResponse, username);
+}
 
 class MinecraftService {
   constructor() {
     this.balanceCache = new Map(); // username -> { balance, timestamp }
-    this.CACHE_DURATION = 10 * 1000; // 10 seconds
+    this.CACHE_DURATION = 2 * 1000; // 2 seconds, keeps rank prefix updates responsive
   }
 
   /**
@@ -26,8 +106,8 @@ class MinecraftService {
       const lowerResponse = response.toLowerCase();
       const isNotFound = lowerResponse.includes('not found') || 
                          lowerResponse.includes('never seen') || 
-                         lowerResponse.includes('không tìm thấy') ||
-                         lowerResponse.includes('không tìm thấy') ||
+                         lowerResponse.includes('khÃ´ng tÃ¬m tháº¥y') ||
+                         lowerResponse.includes('khÃ´ng tÃ¬m tháº¥y') ||
                          lowerResponse.includes('error:') ||
                          lowerResponse.includes('command help') ||
                          lowerResponse.includes('usage:');
@@ -43,8 +123,8 @@ class MinecraftService {
       let realName = username;
       
       // Clean up the response to get just the name if it's there
-      // Example: "§6Slayer §f- §7Offline§f"
-      const cleanLine = lines[0].replace(/§[0-9a-fk-or]/g, '').trim();
+      // Example: "Â§6Slayer Â§f- Â§7OfflineÂ§f"
+      const cleanLine = lines[0].replace(/Â§[0-9a-fk-or]/g, '').trim();
       
       if (cleanLine.includes('-')) {
         realName = cleanLine.split('-')[0].trim();
@@ -62,7 +142,7 @@ class MinecraftService {
       return { exists: true, realName };
     } catch (error) {
       console.error('[MINECRAFT SERVICE] Verify Player Error:', error.message);
-      throw new Error('Không thể kết nối đến Minecraft Server để xác minh nhân vật');
+      throw new Error('KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n Minecraft Server Ä‘á»ƒ xÃ¡c minh nhÃ¢n váº­t');
     }
   }
 
@@ -72,21 +152,44 @@ class MinecraftService {
    * @returns {Promise<number>}
    */
   async getPlayerBalance(username) {
-    if (!username) return 0;
+    const profile = await this.getPlayerBalanceProfile(username);
+    return profile.balance;
+  }
+
+  /**
+   * Get player balance and rank prefix from the same Essentials balance response
+   * @param {string} username
+   * @returns {Promise<{balance: number, rank: string, rankKey: string}>}
+   */
+  async getPlayerBalanceProfile(username, options = {}) {
+    const forceRefresh = Boolean(options.forceRefresh);
+    if (!username) {
+      return {
+        balance: 0,
+        ...rankService.resolveStoredRank(),
+      };
+    }
 
     // Check cache
     const cached = this.balanceCache.get(username);
-    if (cached && (Date.now() - cached.timestamp < this.CACHE_DURATION)) {
-      return cached.balance;
+    if (!forceRefresh && cached && (Date.now() - cached.timestamp < this.CACHE_DURATION)) {
+      const cachedRank = rankService.resolveStoredRank(cached.rank);
+      return {
+        balance: cached.balance,
+        rank: cached.rank || cachedRank.rank,
+        rankKey: cached.rankKey || cachedRank.rankKey,
+      };
     }
 
     try {
       // Use 'bal' instead of 'eco balance' which is more standard for viewing
       // Prefix with 'essentials:' to be safe
       const command = `essentials:bal ${username}`;
-      console.log(`[MINECRAFT SERVICE] Balance command: ${command}`);
+      console.log(`[MINECRAFT SERVICE] Balance command: ${command}${forceRefresh ? ' (force refresh)' : ''}`);
       
+      console.log(`[MINECRAFT SERVICE] Before RCON send balance command: ${command}`);
       const response = await rconService.sendCommand(command);
+      console.log(`[MINECRAFT SERVICE] After RCON send balance command: ${command}`);
       console.log(`[MINECRAFT SERVICE] Balance response for ${username}: ${response.trim()}`);
 
       // Check if response is help page or error
@@ -97,118 +200,76 @@ class MinecraftService {
         if (lowerRes.includes('not found')) {
           throw new Error('PLAYER_NOT_FOUND');
         }
-        return cached ? cached.balance : 0;
+        if (cached) {
+          const cachedRank = rankService.resolveStoredRank(cached.rank);
+          return {
+            balance: cached.balance,
+            rank: cached.rank || cachedRank.rank,
+            rankKey: cached.rankKey || cachedRank.rankKey,
+          };
+        }
+        return {
+          balance: 0,
+          ...rankService.resolveStoredRank(),
+        };
       }
 
-      // Example response: "Balance: $1,250.00" or "kingxu2004 has 1,250.00$"
-      // Requirement: Avoid picking numbers from the username itself (e.g. kingxu2004)
-      let cleaned = response.replace(/§[0-9a-fk-or]/g, '');
-      
-      const lowerUsername = username.toLowerCase();
-      const lowerCleaned = cleaned.toLowerCase();
-      
-      // If the response contains the username, remove it to prevent numeric parts of the name (like '2004') from being parsed as balance
-      const nameIndex = lowerCleaned.indexOf(lowerUsername);
-      if (nameIndex !== -1) {
-          cleaned = cleaned.substring(0, nameIndex) + cleaned.substring(nameIndex + username.length);
-      }
-
-      // Remove thousands separators (commas or periods followed by 3 digits)
-      // If the string is "1.250,50" -> we assume , is decimal if it's the last separator
-      // Common Essentials format is "$1,250.00"
-      
-      let finalClean = cleaned.replace(/[$]/g, '').trim();
-      
-      // If it contains both , and . (e.g. 1,250.00 or 1.250,00)
-      if (finalClean.includes(',') && finalClean.includes('.')) {
-          const lastComma = finalClean.lastIndexOf(',');
-          const lastDot = finalClean.lastIndexOf('.');
-          if (lastComma > lastDot) {
-              // European: 1.250,00 -> remove dots, replace comma with dot
-              finalClean = finalClean.replace(/\./g, '').replace(',', '.');
-          } else {
-              // US: 1,250.00 -> remove commas
-              finalClean = finalClean.replace(/,/g, '');
-          }
-      } else if (finalClean.includes(',')) {
-          // Only commas. If it's like 1,250 -> could be 1250 or 1.25. 
-          // Usually in MC it's a thousands separator if followed by 3 digits.
-          if (finalClean.match(/,\d{3}/)) {
-              finalClean = finalClean.replace(/,/g, '');
-          } else {
-              // Otherwise treat as decimal
-              finalClean = finalClean.replace(',', '.');
-          }
-      }
-      
-      // Look for the first number (handles negative values and decimals)
-      const match = finalClean.match(/-?\d+(\.\d+)?/);
-      
-      const balance = match ? parseFloat(match[0]) : 0;
-      console.log(`[MINECRAFT SERVICE] Parsed balance for ${username}: ${balance} (Raw response minus name: ${finalClean.trim()})`);
+      const balance = parseBalanceResponse(response, username);
+      const cleanResponse = stripMinecraftFormatting(response).replace(/\s+/g, ' ').trim();
+      const parsedRank = parseRankFromBalanceResponse(response, username) || rankService.resolveStoredRank();
+      console.log(`[MINECRAFT SERVICE] Parsed balance for ${username}: ${balance} (Clean response: ${cleanResponse})`);
+      console.log(`[MINECRAFT SERVICE] Parsed rank prefix for ${username}: ${parsedRank.rawGroup || parsedRank.rankKey} -> ${parsedRank.rank}`);
 
       // Update cache
       this.balanceCache.set(username, {
         balance,
+        rank: parsedRank.rank,
+        rankKey: parsedRank.rankKey,
         timestamp: Date.now()
       });
 
-      return balance;
+      return {
+        balance,
+        rank: parsedRank.rank,
+        rankKey: parsedRank.rankKey,
+      };
     } catch (error) {
       console.error('[MINECRAFT SERVICE] Get Balance Error:', error.message);
       // Propagate critical "not found" error so controller can fail the request
       if (error.message === 'PLAYER_NOT_FOUND') {
         throw error;
       }
-      return cached ? cached.balance : 0;
+      if (cached) {
+        const cachedRank = rankService.resolveStoredRank(cached.rank);
+        return {
+          balance: cached.balance,
+          rank: cached.rank || cachedRank.rank,
+          rankKey: cached.rankKey || cachedRank.rankKey,
+        };
+      }
+      return {
+        balance: 0,
+        ...rankService.resolveStoredRank(),
+      };
     }
   }
 
   /**
-   * Get player's primary group (rank) from LuckPerms
-   * @param {string} username 
+   * Get player's rank from the prefix included in the balance response
+   * @param {string} username
    * @returns {Promise<string>}
    */
   async getPlayerRank(username) {
     if (!username) return 'Member';
 
-    const CACHE_KEY = `rank_${username}`;
-    const cached = this.balanceCache.get(CACHE_KEY);
-    if (cached && (Date.now() - cached.timestamp < 60 * 1000)) {
-      return cached.rank;
-    }
-
     try {
-      const command = `lp user ${username} info`;
-      console.log(`[MINECRAFT SERVICE] Rank command: ${command}`);
-      
-      const response = await rconService.sendCommand(command);
-      const lines = response.split('\n');
-      let rank = 'Member';
-      
-      for (const line of lines) {
-          const cleanLine = line.replace(/§[0-9a-fk-or]/g, '').trim();
-          if (cleanLine.toLowerCase().includes('primary group:')) {
-              rank = cleanLine.split(':')[1].trim();
-              break;
-          }
-      }
-      
-      // Simple formatting: member -> Member
-      rank = rank.charAt(0).toUpperCase() + rank.slice(1);
-      
-      console.log(`[MINECRAFT SERVICE] Parsed rank for ${username}: ${rank}`);
-
-      this.balanceCache.set(CACHE_KEY, {
-        rank,
-        timestamp: Date.now()
-      });
-
-      return rank;
+      const rankInfo = await this.getPlayerBalanceProfile(username);
+      return rankInfo.rank;
     } catch (error) {
-      console.error('[MINECRAFT SERVICE] Get Rank Error:', error.message);
+      console.error('[MINECRAFT SERVICE] Get Rank Prefix Error:', error.message);
       return 'Member';
     }
+
   }
 
   /**
@@ -220,4 +281,7 @@ class MinecraftService {
   }
 }
 
-module.exports = new MinecraftService();
+const minecraftService = new MinecraftService();
+module.exports = minecraftService;
+module.exports.parseRankFromBalanceResponse = parseRankFromBalanceResponse;
+module.exports.parseBalanceResponse = parseBalanceResponse;

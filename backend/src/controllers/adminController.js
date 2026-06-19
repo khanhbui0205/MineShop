@@ -2,9 +2,13 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Package = require('../models/Package');
 const PaymentConfig = require('../models/PaymentConfig');
+const RedeemCode = require('../models/RedeemCode');
+const CodeRedemption = require('../models/CodeRedemption');
+const PendingReward = require('../models/PendingReward');
 const bcrypt = require('bcryptjs');
 const minecraftService = require('../services/minecraftService');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
+const { syncUserRankFromMinecraft } = require('../services/userRankSyncService');
 
 const PAID_STATUSES = ['PAID', 'paid', 'completed', 'Completed'];
 const PENDING_STATUSES = ['PENDING', 'pending'];
@@ -110,11 +114,35 @@ const normalizePromotionInput = ({ promotionType, bonusCoin, bonusCoins, discoun
 // @access  Private/Admin
 exports.getStats = async (req, res) => {
   try {
-    const [totalUsers, bannedUsers, totalTransactions, packages] = await Promise.all([
+    const now = new Date();
+    const [
+      totalUsers,
+      bannedUsers,
+      totalTransactions,
+      packages,
+      totalCodes,
+      totalRedeems,
+      activeCodes,
+      expiredCodes,
+      pendingRewards,
+      completedRewards,
+    ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ isBanned: true }),
       Transaction.countDocuments(),
       Package.countDocuments(),
+      RedeemCode.countDocuments(),
+      CodeRedemption.countDocuments(),
+      RedeemCode.countDocuments({
+        isActive: true,
+        $and: [
+          { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+          { $or: [{ endDate: null }, { endDate: { $gte: now } }] },
+        ],
+      }),
+      RedeemCode.countDocuments({ endDate: { $ne: null, $lt: now } }),
+      PendingReward.countDocuments({ status: 'PENDING' }),
+      PendingReward.countDocuments({ status: 'COMPLETED' }),
     ]);
 
     // Tổng doanh thu (Chỉ tính các giao dịch completed)
@@ -130,6 +158,12 @@ exports.getStats = async (req, res) => {
       totalRevenue,
       totalTransactions,
       totalPackages: packages,
+      totalCodes,
+      totalRedeems,
+      activeCodes,
+      expiredCodes,
+      pendingRewards,
+      completedRewards,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -384,9 +418,9 @@ exports.getUsers = async (req, res) => {
         try {
           const [gameBalance, gameRank] = await Promise.all([
             minecraftService.getPlayerBalance(minecraftUsername),
-            minecraftService.getPlayerRank(minecraftUsername),
+            syncUserRankFromMinecraft(u),
           ]);
-          return { ...enriched, balance: gameBalance, rank: gameRank };
+          return { ...enriched, balance: gameBalance, rank: gameRank.rank, rankKey: gameRank.rankKey };
         } catch (err) {
           return enriched;
         }
@@ -422,10 +456,11 @@ exports.getUserById = async (req, res) => {
       try {
         const [gameBalance, gameRank] = await Promise.all([
           minecraftService.getPlayerBalance(minecraftUsername),
-          minecraftService.getPlayerRank(minecraftUsername),
+          syncUserRankFromMinecraft(user),
         ]);
         user.balance = gameBalance;
-        user.rank = gameRank;
+        user.rank = gameRank.rank;
+        user.rankKey = gameRank.rankKey;
 
         const cached = minecraftService.balanceCache.get(minecraftUsername);
         user.minecraftLastSync = cached ? new Date(cached.timestamp) : new Date();

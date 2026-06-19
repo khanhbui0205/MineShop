@@ -189,16 +189,24 @@ exports.streamNotifications = async (req, res) => {
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
+    res.flushHeaders?.();
+    res.write('retry: 5000\n\n');
 
     const cleanup = addNotificationClient(user._id, res);
     const heartbeat = setInterval(() => {
-      res.write(': keep-alive\n\n');
+      if (!res.destroyed && !res.writableEnded) {
+        res.write(': keep-alive\n\n');
+      }
     }, 25000);
+
+    res.on('error', () => {
+      clearInterval(heartbeat);
+      cleanup();
+    });
 
     req.on('close', () => {
       clearInterval(heartbeat);
       cleanup();
-      res.end();
     });
   } catch (error) {
     res.status(401).json({ message: 'Not authorized, token failed' });

@@ -7,6 +7,14 @@ export interface MinecraftBalanceResponse {
   syncedAt?: string;
 }
 
+export interface MinecraftRankResponse {
+  success: boolean;
+  username: string;
+  rank: string;
+  rankKey: string;
+  syncedAt?: string;
+}
+
 export interface PlayerCheckResponse {
   success: boolean;
   playerExists: boolean;
@@ -25,6 +33,11 @@ const minecraftService = {
    */
   getPlayerBalance: async (username: string): Promise<MinecraftBalanceResponse> => {
     const response = await api.get(`/minecraft/balance/${username}`);
+    return response.data;
+  },
+
+  getPlayerRank: async (username: string): Promise<MinecraftRankResponse> => {
+    const response = await api.get(`/minecraft/rank/${username}`);
     return response.data;
   },
 

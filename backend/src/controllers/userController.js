@@ -1,25 +1,35 @@
 const User = require('../models/User');
-const minecraftService = require('../services/minecraftService');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
+const { syncUserGameProfile } = require('../services/userRankSyncService');
+const { resolveStoredRank } = require('../services/rankService');
 
 // @desc    Get current user profile
+// @route   GET /api/profile
 // @route   GET /api/users/profile
 // @access  Private
 exports.getProfile = async (req, res) => {
   try {
+    console.log(`[PROFILE] getProfile entry: user=${req.user?._id || '(empty)'}`);
+    res.set('Cache-Control', 'no-store');
+
     const user = await User.findById(req.user._id).lean();
     if (user) {
       const minecraftUsername = resolveMinecraftUsername(user);
+      console.log(`[PROFILE] Loaded user profile: username=${user.username}, minecraftUsername=${minecraftUsername || '(empty)'}`);
+      const storedRank = resolveStoredRank(user.rank);
+      user.rank = storedRank.rank;
+      user.rankKey = storedRank.rankKey;
 
       // Sync balance & rank from Minecraft Server if username is linked
       if (minecraftUsername) {
         try {
-          const [gameBalance, gameRank] = await Promise.all([
-            minecraftService.getPlayerBalance(minecraftUsername),
-            minecraftService.getPlayerRank(minecraftUsername)
-          ]);
-          user.balance = gameBalance;
-          user.rank = gameRank; // Overwrite for real-time display
+          const forceRefresh = req.query.syncFresh === '1' || req.query.syncFresh === 'true' || req.query.forceRefresh === '1';
+          console.log(`[PROFILE] Syncing game profile for ${minecraftUsername}${forceRefresh ? ' with force refresh' : ''}`);
+          const gameProfile = await syncUserGameProfile(user, { forceRefresh });
+          console.log(`[PROFILE] Synced game profile for ${minecraftUsername}: balance=${gameProfile.balance}, rank=${gameProfile.rank}`);
+          user.balance = gameProfile.balance;
+          user.rank = gameProfile.rank;
+          user.rankKey = gameProfile.rankKey;
         } catch (err) {
           console.warn('[PROFILE] Failed to fetch game data:', err.message);
         }
@@ -33,6 +43,7 @@ exports.getProfile = async (req, res) => {
         balance: user.balance,
         totalDeposited: user.totalDeposited,
         rank: user.rank,
+        rankKey: user.rankKey || 'default',
         battlePassLevel: user.battlePassLevel,
         battlePassXp: user.battlePassXp,
         minecraftUsername,

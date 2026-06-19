@@ -13,6 +13,9 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const serverControlRoutes = require('./routes/admin/serverControlRoutes');
 const minecraftRoutes = require('./routes/minecraftRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const redeemRoutes = require('./routes/redeemRoutes');
+const { protect } = require('./middleware/authMiddleware');
+const { getProfile } = require('./controllers/userController');
 
 const app = express();
 
@@ -75,6 +78,8 @@ apiRouter.use('/payment', paymentRoutes);
 apiRouter.use('/payos', paymentRoutes);
 apiRouter.use('/minecraft', minecraftRoutes);
 apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/redeem', redeemRoutes);
+apiRouter.get('/profile', protect, getProfile);
 
 // Health check inside apiRouter
 apiRouter.get('/health', (req, res) => {

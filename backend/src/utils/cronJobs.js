@@ -7,6 +7,7 @@ const {
   markPaymentFailure,
   syncTransactionWithPayOS,
 } = require('../services/paymentProcessingService');
+const { processPendingRewardsForOnlinePlayers } = require('../services/rewardService');
 
 const initCronJobs = () => {
   cron.schedule('*/5 * * * *', async () => {
@@ -38,6 +39,21 @@ const initCronJobs = () => {
   });
 
   console.log('[CRON] PayOS sync job scheduled (every 5 minutes)');
+
+  cron.schedule('*/30 * * * * *', async () => {
+    try {
+      const result = await processPendingRewardsForOnlinePlayers({ limit: 50 });
+      if (result.total > 0 || result.failed > 0) {
+        console.log(
+          `[CRON] Pending rewards checked=${result.checked}, completed=${result.completed}, failed=${result.failed}`
+        );
+      }
+    } catch (error) {
+      console.error('[CRON REWARD ERROR]', error.message);
+    }
+  });
+
+  console.log('[CRON] Pending reward RCON processor scheduled (every 30 seconds)');
 };
 
 module.exports = {

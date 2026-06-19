@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  TrendingUp, Users, Coins, Crown, Activity, ShoppingBag,
+  TrendingUp, Users, Coins, Crown, Activity, ShoppingBag, Gift,
   Trash2, Edit2, PlusCircle, Clock, X, Eye, EyeOff, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import type { CoinPackage, AuditLog, AdminStats, AdminTab } from '../types';
@@ -105,13 +105,14 @@ export default function DashboardAdmin({
   return (
     <div className="space-y-8">
       {/* Stats Grid */}
-      <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <section className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {[
           { label: 'Tổng người dùng', value: stats.totalUsers.toLocaleString('vi-VN'), icon: <Users size={20} />, color: 'text-indigo-400' },
           { label: 'Tài khoản bị khóa', value: stats.bannedUsers.toLocaleString('vi-VN'), icon: <Activity size={20} />, color: 'text-red-400' },
           { label: 'Tổng doanh thu', value: formatVND(stats.totalRevenue), icon: <TrendingUp size={20} />, color: 'text-emerald-400' },
           { label: 'Giao dịch', value: stats.totalTransactions.toLocaleString('vi-VN'), icon: <ShoppingBag size={20} />, color: 'text-amber-400' },
           { label: 'Gói nạp', value: stats.totalPackages.toLocaleString('vi-VN'), icon: <Coins size={20} />, color: 'text-sky-400' },
+          { label: 'Redeem Code', value: (stats.totalCodes || 0).toLocaleString('vi-VN'), icon: <Gift size={20} />, color: 'text-violet-400' },
         ].map(({ label, value, icon, color }) => (
           <motion.div
             key={label}
@@ -119,9 +120,10 @@ export default function DashboardAdmin({
             onClick={() => {
               if (label === 'Tổng doanh thu') onTabChange('Doanh thu');
               if (label === 'Tổng người dùng') onTabChange('Người dùng');
+              if (label === 'Redeem Code') onTabChange('Redeem Code');
             }}
             className={`bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden transition-all ${
-              (label === 'Tổng doanh thu' || label === 'Tổng người dùng') ? 'cursor-pointer hover:bg-white/10 hover:border-white/20 active:scale-95' : ''
+              (label === 'Tổng doanh thu' || label === 'Tổng người dùng' || label === 'Redeem Code') ? 'cursor-pointer hover:bg-white/10 hover:border-white/20 active:scale-95' : ''
             }`}
           >
             <div className={`${color}`}>{icon}</div>
