@@ -8,6 +8,7 @@ const PendingReward = require('../models/PendingReward');
 const bcrypt = require('bcryptjs');
 const minecraftService = require('../services/minecraftService');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
+const { syncUserRankFromMinecraft } = require('../services/userRankSyncService');
 
 const PAID_STATUSES = ['PAID', 'paid', 'completed', 'Completed'];
 const PENDING_STATUSES = ['PENDING', 'pending'];
@@ -417,9 +418,9 @@ exports.getUsers = async (req, res) => {
         try {
           const [gameBalance, gameRank] = await Promise.all([
             minecraftService.getPlayerBalance(minecraftUsername),
-            minecraftService.getPlayerRank(minecraftUsername),
+            syncUserRankFromMinecraft(u),
           ]);
-          return { ...enriched, balance: gameBalance, rank: gameRank };
+          return { ...enriched, balance: gameBalance, rank: gameRank.rank, rankKey: gameRank.rankKey };
         } catch (err) {
           return enriched;
         }
@@ -455,10 +456,11 @@ exports.getUserById = async (req, res) => {
       try {
         const [gameBalance, gameRank] = await Promise.all([
           minecraftService.getPlayerBalance(minecraftUsername),
-          minecraftService.getPlayerRank(minecraftUsername),
+          syncUserRankFromMinecraft(user),
         ]);
         user.balance = gameBalance;
-        user.rank = gameRank;
+        user.rank = gameRank.rank;
+        user.rankKey = gameRank.rankKey;
 
         const cached = minecraftService.balanceCache.get(minecraftUsername);
         user.minecraftLastSync = cached ? new Date(cached.timestamp) : new Date();

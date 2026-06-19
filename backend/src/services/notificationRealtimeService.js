@@ -1,8 +1,15 @@
 const clientsByUserId = new Map();
 
 function writeEvent(res, event, payload) {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  if (res.destroyed || res.writableEnded) return false;
+
+  try {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 function addNotificationClient(userId, res) {
@@ -27,8 +34,14 @@ function publishNotification(userIds, notification) {
     if (!clients) return;
 
     clients.forEach((res) => {
-      writeEvent(res, 'notification:new', notification);
+      if (!writeEvent(res, 'notification:new', notification)) {
+        clients.delete(res);
+      }
     });
+
+    if (clients.size === 0) {
+      clientsByUserId.delete(userId.toString());
+    }
   });
 }
 
@@ -38,8 +51,14 @@ function publishUserEvent(userIds, event, payload) {
     if (!clients) return;
 
     clients.forEach((res) => {
-      writeEvent(res, event, payload);
+      if (!writeEvent(res, event, payload)) {
+        clients.delete(res);
+      }
     });
+
+    if (clients.size === 0) {
+      clientsByUserId.delete(userId.toString());
+    }
   });
 }
 

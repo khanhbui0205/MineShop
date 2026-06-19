@@ -29,6 +29,7 @@ export interface UserProfile {
   balance: number;
   totalDeposited: number;
   rank: string;
+  rankKey?: string;
   battlePassLevel: number;
   battlePassXp: number;
   minecraftUsername?: string;

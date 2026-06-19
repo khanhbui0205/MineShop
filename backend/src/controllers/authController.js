@@ -2,6 +2,8 @@ const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const minecraftService = require('../services/minecraftService');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
+const { syncUserRankFromMinecraft } = require('../services/userRankSyncService');
+const { resolveStoredRank } = require('../services/rankService');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -77,6 +79,12 @@ exports.register = async (req, res) => {
     }
 
     const verifiedMcName = verification.realName || minecraftUsername;
+    let initialRank = 'Member';
+    try {
+      initialRank = await minecraftService.getPlayerRank(verifiedMcName);
+    } catch (error) {
+      console.warn('[AUTH] Failed to sync rank prefix on register:', error.message);
+    }
 
     const user = await User.create({
       username: username.trim(),
@@ -84,15 +92,19 @@ exports.register = async (req, res) => {
       password,
       minecraftUsername: verifiedMcName,
       minecraftVerified: true,
+      rank: initialRank,
     });
 
     if (user) {
+      const registeredRank = resolveStoredRank(user.rank);
       res.status(201).json({
         _id: user._id,
         username: user.username,
         email: user.email,
         role: user.role,
         balance: user.balance,
+        rank: registeredRank.rank,
+        rankKey: registeredRank.rankKey,
         minecraftUsername: user.minecraftUsername,
         minecraftVerified: user.minecraftVerified,
         createdAt: user.createdAt,
@@ -169,6 +181,12 @@ exports.login = async (req, res) => {
     const lastLoginAt = new Date();
     await User.updateOne({ _id: user._id }, { $set: { lastLoginAt } });
     user.lastLoginAt = lastLoginAt;
+    let syncedRank = resolveStoredRank(user.rank);
+    try {
+      syncedRank = await syncUserRankFromMinecraft(user);
+    } catch (error) {
+      console.warn('[AUTH] Failed to sync rank prefix:', error.message);
+    }
 
     res.json({
       _id: user._id,
@@ -177,7 +195,8 @@ exports.login = async (req, res) => {
       role: user.role,
       balance: user.balance,
       totalDeposited: user.totalDeposited,
-      rank: user.rank,
+      rank: syncedRank.rank,
+      rankKey: syncedRank.rankKey,
       battlePassLevel: user.battlePassLevel,
       battlePassXp: user.battlePassXp,
       minecraftUsername: resolveMinecraftUsername(user),
@@ -201,6 +220,12 @@ exports.getMe = async (req, res) => {
 
     if (user) {
       const minecraftUsername = resolveMinecraftUsername(user);
+      let syncedRank = resolveStoredRank(user.rank);
+      try {
+        syncedRank = await syncUserRankFromMinecraft(user);
+      } catch (error) {
+        console.warn('[AUTH] Failed to sync rank prefix:', error.message);
+      }
       res.json({
         _id: user._id,
         username: user.username,
@@ -208,7 +233,8 @@ exports.getMe = async (req, res) => {
         role: user.role,
         balance: user.balance,
         totalDeposited: user.totalDeposited,
-        rank: user.rank,
+        rank: syncedRank.rank,
+        rankKey: syncedRank.rankKey,
         battlePassLevel: user.battlePassLevel,
         battlePassXp: user.battlePassXp,
         minecraftUsername,

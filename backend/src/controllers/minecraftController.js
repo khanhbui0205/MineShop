@@ -2,6 +2,12 @@ const minecraftService = require('../services/minecraftService');
 const User = require('../models/User');
 const { resolveMinecraftUsername } = require('../utils/userHelpers');
 const { processPendingRewardsForUsername, PLAYER_NAME_REGEX } = require('../services/rewardService');
+const { syncUserRankFromMinecraft } = require('../services/userRankSyncService');
+const rankService = require('../services/rankService');
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // @desc    Get Minecraft player balance (verify player exists first)
 // @route   GET /api/minecraft/balance/:username
@@ -35,6 +41,56 @@ exports.getPlayerBalance = async (req, res) => {
     });
   } catch (error) {
     console.error('[MINECRAFT CONTROLLER] getPlayerBalance error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get Minecraft player rank from balance prefix and sync it to web account
+// @route   GET /api/minecraft/rank/:username
+// @access  Private
+exports.getPlayerRank = async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    const linkedMcName = resolveMinecraftUsername(req.user);
+    if (
+      req.user.role !== 'admin'
+      && linkedMcName.toLowerCase() !== username.toLowerCase()
+    ) {
+      return res.status(403).json({ success: false, message: 'Khong co quyen truy cap rank nay' });
+    }
+
+    let rankInfo;
+    if (req.user.role !== 'admin') {
+      rankInfo = await syncUserRankFromMinecraft(req.user);
+    } else {
+      const linkedUser = await User.findOne({
+        $or: [
+          { minecraftUsername: { $regex: new RegExp(`^${escapeRegex(username)}$`, 'i') } },
+          { username: { $regex: new RegExp(`^${escapeRegex(username)}$`, 'i') } },
+        ],
+      });
+
+      try {
+        rankInfo = await minecraftService.getPlayerBalanceProfile(username);
+        if (linkedUser && rankInfo?.rank) {
+          await User.updateOne({ _id: linkedUser._id }, { $set: { rank: rankInfo.rank } });
+        }
+      } catch (error) {
+        console.warn(`[MINECRAFT CONTROLLER] Rank prefix fallback for ${username}: ${error.message}`);
+        rankInfo = rankService.resolveStoredRank(linkedUser?.rank);
+      }
+    }
+
+    res.json({
+      success: true,
+      username,
+      rank: rankInfo.rank,
+      rankKey: rankInfo.rankKey,
+      syncedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[MINECRAFT CONTROLLER] getPlayerRank error:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -130,16 +186,13 @@ exports.checkPlayer = async (req, res) => {
       });
     }
 
-    // Step 2: Cross-verify with balance (Essential for catching logic failures)
+    // Step 2: Cross-verify with balance and rank prefix
     let balance = 0;
     let rank = 'Member';
     try {
-      const [bal, rnk] = await Promise.all([
-        minecraftService.getPlayerBalance(result.realName),
-        minecraftService.getPlayerRank(result.realName)
-      ]);
-      balance = bal;
-      rank = rnk;
+      const profile = await minecraftService.getPlayerBalanceProfile(result.realName);
+      balance = profile.balance;
+      rank = profile.rank;
     } catch (err) {
       if (err.message === 'PLAYER_NOT_FOUND') {
         console.log(`[MINECRAFT CONTROLLER] Check Player Reject: ${result.realName} (Reason: NOT_FOUND in balance cross-check)`);
