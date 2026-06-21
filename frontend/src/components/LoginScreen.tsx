@@ -68,15 +68,15 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
       <div className="absolute inset-x-0 bottom-1/4 h-96 bg-indigo-600/5 rounded-full blur-[140px] pointer-events-none -z-1" />
 
       {/* Main Content Area in Slate 900 overlay look */}
-      <main className="relative z-10 flex-grow flex items-center justify-center px-4 py-20 bg-slate-900/10 backdrop-blur-[3px]">
+      <main className="relative z-10 flex-grow flex items-center justify-center px-4 py-8 sm:py-14 md:py-20 bg-slate-900/10 backdrop-blur-[3px]">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-md"
+          className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md min-w-0"
         >
           {/* Main Card (Crisp White Card with Slate Shadows) */}
-          <div className="bg-white rounded-2xl p-8 md:p-10 flex flex-col gap-8 shadow-2xl border border-slate-200/80">
+          <div className="min-w-0 bg-white rounded-2xl p-5 sm:p-8 md:p-10 flex flex-col gap-6 sm:gap-8 shadow-2xl border border-slate-200/80">
             
             {/* Logo header */}
             <div className="text-center flex flex-col items-center gap-4">
@@ -84,10 +84,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
                 <img src="/logo.png" alt="Emerald Realm logo" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-extrabold text-indigo-600 tracking-tight">
+                <h1 className="break-words text-center font-display text-[1.35rem] sm:text-3xl font-extrabold text-indigo-600 tracking-tight leading-tight">
                   EMERALD REALM
                 </h1>
-                <p className="text-sm text-slate-500 mt-1.5 font-sans">
+                <p className="max-w-full break-words text-sm text-slate-500 mt-1.5 font-sans">
                   Vui lòng đăng nhập để vào bảng điều khiển.
                 </p>
               </div>
@@ -147,7 +147,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
               </div>
 
               {/* Keep Remember me & Forgot Password */}
-              <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 mt-1">
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input 
                     type="checkbox"
@@ -170,7 +170,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full mt-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full mt-4 min-h-11 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 <LogIn className="w-4 h-4" />
@@ -194,7 +194,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }: Lo
       </main>
 
       {/* Footer mirroring layout -> beautiful elegant light grey background */}
-      <footer className="relative z-10 w-full bg-slate-900 text-slate-400 py-16 px-8 mt-auto">
+      <footer className="relative z-10 w-full bg-slate-900 text-slate-400 py-10 sm:py-16 px-4 sm:px-8 mt-auto">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
           
           <div className="space-y-4 col-span-1">

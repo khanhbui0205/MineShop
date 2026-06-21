@@ -161,14 +161,14 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-6xl mx-auto w-full">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8 items-start">
         
         {/* Main Payment Card */}
-        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl md:rounded-3xl shadow-xl overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-2">
             
             {/* Left: QR Section */}
-            <div className="p-10 border-r border-slate-100 bg-slate-50/50 flex flex-col items-center justify-center space-y-8">
+            <div className="p-5 sm:p-8 md:p-10 md:border-r border-slate-100 bg-slate-50/50 flex flex-col items-center justify-center space-y-6 md:space-y-8">
               <div className="text-center">
                 <h3 className="text-xl font-extrabold text-slate-900 mb-2">Thanh toán VietQR</h3>
                 <p className="text-slate-500 text-xs max-w-[240px] mx-auto font-medium">
@@ -177,11 +177,11 @@ export default function CheckoutPage() {
               </div>
 
               {/* QR Code */}
-              <div className="relative p-6 bg-white rounded-3xl shadow-xl border border-slate-100 transition-transform hover:scale-[1.02]">
+              <div className="relative p-4 sm:p-6 bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 transition-transform hover:scale-[1.02]">
                 <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(transaction.qrCode || '')}`} 
                   alt="Payment QR" 
-                  className="w-48 h-48 md:w-56 md:h-56"
+                  className="h-auto w-[min(64vw,14rem)] md:w-56"
                 />
 
                 
@@ -194,7 +194,7 @@ export default function CheckoutPage() {
 
               {/* Status & Countdown */}
               <div className="w-full flex flex-col items-center gap-4">
-                <div className="flex items-center gap-3 px-5 py-2 bg-amber-50 text-amber-600 border border-amber-200 rounded-full shadow-sm">
+                <div className="flex items-center gap-3 px-4 sm:px-5 py-2 bg-amber-50 text-amber-600 border border-amber-200 rounded-full shadow-sm">
                   <RotateCw size={14} className="animate-spin" />
                   <span className="font-mono text-[10px] font-bold uppercase tracking-widest">Đang chờ thanh toán</span>
                 </div>
@@ -224,7 +224,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Right: Info Section */}
-            <div className="p-10 flex flex-col justify-between">
+            <div className="p-5 sm:p-8 md:p-10 flex flex-col justify-between">
               <div className="space-y-6">
                 <div>
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Chi tiết đơn hàng</h4>
@@ -245,7 +245,7 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Delivery destination */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1.5">
                       <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Deliver To</span>
                       <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
@@ -269,10 +269,10 @@ export default function CheckoutPage() {
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Số tài khoản</span>
                     <div 
                       onClick={() => triggerCopy(transaction.accountNumber || '', 'Số tài khoản')}
-                      className="p-3 bg-white rounded-xl border border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-sm"
+                      className="p-3 bg-white rounded-xl border border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center gap-3 group shadow-sm"
                     >
-                      <div className="flex flex-col">
-                        <span className="font-mono text-sm font-bold text-slate-800">{transaction.accountNumber || 'N/A'}</span>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="break-all font-mono text-sm font-bold text-slate-800">{transaction.accountNumber || 'N/A'}</span>
                         <span className="text-[10px] text-slate-400 font-bold">{transaction.bankName || 'Ngân hàng'}</span>
                       </div>
                       {copiedField === 'Số tài khoản' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-slate-400 group-hover:text-indigo-500" />}
@@ -284,9 +284,9 @@ export default function CheckoutPage() {
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Người nhận</span>
                     <div 
                       onClick={() => triggerCopy(transaction.accountName || '', 'Tên người nhận')}
-                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-sm"
+                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center gap-3 group shadow-sm"
                     >
-                      <span className="text-sm font-bold text-slate-700 uppercase">{transaction.accountName || 'N/A'}</span>
+                      <span className="min-w-0 break-words text-sm font-bold text-slate-700 uppercase">{transaction.accountName || 'N/A'}</span>
                       {copiedField === 'Tên người nhận' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-slate-400 group-hover:text-indigo-500" />}
                     </div>
                   </div>
@@ -296,9 +296,9 @@ export default function CheckoutPage() {
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Nội dung chuyển khoản</span>
                     <div 
                       onClick={() => triggerCopy(transaction.description || transaction.orderCode.toString(), 'Nội dung')}
-                      className="p-3 bg-amber-50/50 rounded-xl border border-amber-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-sm"
+                      className="p-3 bg-amber-50/50 rounded-xl border border-amber-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center gap-3 group shadow-sm"
                     >
-                      <span className="font-mono text-sm font-bold text-amber-700">{transaction.description || transaction.orderCode}</span>
+                      <span className="min-w-0 break-all font-mono text-sm font-bold text-amber-700">{transaction.description || transaction.orderCode}</span>
                       {copiedField === 'Nội dung' ? <Check size={16} className="text-emerald-500" /> : <Copy size={14} className="text-amber-400 group-hover:text-indigo-500" />}
                     </div>
                   </div>
@@ -308,9 +308,9 @@ export default function CheckoutPage() {
                     <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Số tiền thanh toán</span>
                     <div 
                       onClick={() => triggerCopy(transaction.amount.toString(), 'Số tiền')}
-                      className="p-4 bg-indigo-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center group shadow-md"
+                      className="p-4 bg-indigo-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-500 transition-all cursor-pointer flex justify-between items-center gap-3 group shadow-md"
                     >
-                      <span className="text-xl font-black text-indigo-600">
+                      <span className="min-w-0 break-words text-lg sm:text-xl font-black text-indigo-600">
                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(transaction.amount)}
                       </span>
                       {copiedField === 'Số tiền' ? <Check size={20} className="text-emerald-500" /> : <Copy size={18} className="text-indigo-400 group-hover:text-indigo-600" />}
@@ -329,7 +329,7 @@ export default function CheckoutPage() {
                 <button
                   onClick={checkStatusManually}
                   disabled={isChecking || timeLeft <= 0}
-                  className="w-full bg-indigo-600 hover:bg-slate-900 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full min-h-12 bg-indigo-600 hover:bg-slate-900 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isChecking ? <RotateCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
                   XÁC NHẬN ĐÃ CHUYỂN TIỀN
@@ -338,7 +338,7 @@ export default function CheckoutPage() {
                   href={transaction.paymentUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 text-[10px] uppercase tracking-widest border border-slate-200"
+                  className="w-full min-h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 text-[10px] uppercase tracking-widest border border-slate-200"
                 >
                   Mở trang PayOS gốc
                 </a>
@@ -349,7 +349,7 @@ export default function CheckoutPage() {
 
         {/* Sidebar Info */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl">
+          <div className="bg-white border border-slate-200 rounded-2xl md:rounded-3xl p-5 sm:p-8 shadow-xl">
             <div className="flex items-center gap-3 mb-6 text-indigo-600">
               <Smartphone size={24} />
               <span className="font-black uppercase tracking-tight text-sm">Hướng dẫn nhanh</span>
@@ -371,7 +371,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6 flex gap-4">
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 sm:p-6 flex gap-4">
             <Info className="text-amber-500 shrink-0" size={20} />
             <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
               Nếu sau 10 phút vẫn chưa nhận được Xu, vui lòng liên hệ GM qua Discord/Fanpage để được hỗ trợ thủ công nhanh nhất.

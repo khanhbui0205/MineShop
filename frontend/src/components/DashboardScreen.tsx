@@ -474,7 +474,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               initial={{ opacity: 0, y: -50, x: '-50%' }}
               animate={{ opacity: 1, y: 0, x: '-50%' }}
               exit={{ opacity: 0, y: -40, x: '-50%' }}
-              className={`fixed top-6 left-1/2 z-[9999] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border ${
+              className={`fixed top-4 sm:top-6 left-1/2 z-[9999] max-w-[calc(100vw-2rem)] px-4 sm:px-6 py-3 sm:py-4 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border ${
                 notification.type === 'success'
                 ? 'bg-indigo-600 text-white border-indigo-500/20 font-semibold'
                 : 'bg-red-600 text-white border-red-500/20'
@@ -485,7 +485,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               ) : (
                 <X className="w-5 h-5 text-red-100" />
               )}
-              <span>{notification.message}</span>
+              <span className="break-words text-sm">{notification.message}</span>
             </motion.div>
           )}
         </AnimatePresence>,
@@ -614,14 +614,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
       </nav>
 
       {/* MOBILE HEADER & NAVIGATION */}
-      <header className="md:hidden bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-40 text-white">
-        <div className="flex items-center gap-2">
+      <header className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40 text-white">
+        <div className="flex min-w-0 items-center gap-2">
           <img 
             alt="Server Logo" 
             className="w-8 h-8 rounded-lg object-cover" 
             src="/logo.png"
           />
-          <span className="font-display font-black text-indigo-400 tracking-wider">CỔNG DỊCH VỤ</span>
+          <span className="truncate font-display font-black text-indigo-400 tracking-wider">CỔNG DỊCH VỤ</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -630,14 +630,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               setStoreFilter('Coins');
               setActiveTab('Cửa hàng');
             }}
-            className="p-2 bg-indigo-600/25 text-indigo-400 rounded-full border border-indigo-500/20"
+            className="min-h-11 min-w-11 p-2 bg-indigo-600/25 text-indigo-400 rounded-full border border-indigo-500/20 flex items-center justify-center"
           >
             <PlusCircle className="w-4 h-4" />
           </button>
           
           <button 
             onClick={onLogout}
-            className="text-red-400 hover:text-red-300 transition-colors"
+            className="min-h-11 min-w-11 text-red-400 hover:text-red-300 transition-colors flex items-center justify-center"
           >
             <LogOut className="w-5 h-5" />
           </button>
@@ -645,51 +645,51 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
       </header>
 
       {/* Mobile Tab-Bar exactly at page bottom */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-40 flex justify-around py-3">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-40 flex justify-around px-1 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         <button 
           onClick={() => setActiveTab('Trang chủ')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Trang chủ' ? 'text-indigo-400' : 'text-slate-400'}`}
+          className={`min-h-[54px] flex-1 flex flex-col items-center justify-center gap-1 px-1 ${activeTab === 'Trang chủ' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <Home className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Trang chủ</span>
+          <span className="max-w-full truncate text-[10px] font-semibold">Trang chủ</span>
         </button>
         <button 
           onClick={() => setActiveTab('Cửa hàng')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Cửa hàng' ? 'text-indigo-400' : 'text-slate-400'}`}
+          className={`min-h-[54px] flex-1 flex flex-col items-center justify-center gap-1 px-1 ${activeTab === 'Cửa hàng' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <ShoppingCart className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Cửa hàng</span>
+          <span className="max-w-full truncate text-[10px] font-semibold">Cửa hàng</span>
         </button>
         <button 
           onClick={() => setActiveTab('Redeem Code')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Redeem Code' ? 'text-indigo-400' : 'text-slate-400'}`}
+          className={`min-h-[54px] flex-1 flex flex-col items-center justify-center gap-1 px-1 ${activeTab === 'Redeem Code' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <Ticket className="w-5 h-5" />
           <span className="text-[10px] font-semibold">Redeem</span>
         </button>
         <button 
           onClick={() => setActiveTab('Lịch sử')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Lịch sử' ? 'text-indigo-400' : 'text-slate-400'}`}
+          className={`min-h-[54px] flex-1 flex flex-col items-center justify-center gap-1 px-1 ${activeTab === 'Lịch sử' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <HistoryIcon className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Lịch sử</span>
+          <span className="max-w-full truncate text-[10px] font-semibold">Lịch sử</span>
         </button>
         <button 
           onClick={() => setActiveTab('Cài đặt')}
-          className={`flex flex-col items-center gap-1 ${activeTab === 'Cài đặt' ? 'text-indigo-400' : 'text-slate-400'}`}
+          className={`min-h-[54px] flex-1 flex flex-col items-center justify-center gap-1 px-1 ${activeTab === 'Cài đặt' ? 'text-indigo-400' : 'text-slate-400'}`}
         >
           <SettingsIcon className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">Cài đặt</span>
+          <span className="max-w-full truncate text-[10px] font-semibold">Cài đặt</span>
         </button>
       </div>
 
       {/* MAIN LAYOUT CANVAS */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0 z-10 relative overflow-y-auto">
+      <div className="flex-1 min-w-0 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0 z-10 relative overflow-y-auto">
         
         {/* TopNavBar Header for dashboard */}
-        <header className="bg-white border-b border-slate-200/80 flex justify-between items-center px-8 h-20 w-full z-30 sticky top-0">
-          <div className="text-left">
-            <h2 className="font-display font-extrabold text-xl text-slate-950 tracking-tight capitalize">
+        <header className="bg-white border-b border-slate-200/80 flex justify-between items-center gap-3 px-4 md:px-8 min-h-16 md:h-20 py-3 md:py-0 w-full z-30 sticky top-0">
+          <div className="min-w-0 text-left">
+            <h2 className="truncate font-display font-extrabold text-lg md:text-xl text-slate-950 tracking-tight capitalize">
               {activeTab}
             </h2>
             <p className="text-xs text-slate-500 font-sans hidden sm:block font-medium">
@@ -697,13 +697,13 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-700">
+          <div className="flex shrink-0 items-center gap-2 md:gap-4 text-slate-700">
             
             {/* Coins Balance Medallion */}
-            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-200 hover:scale-102 transition-transform shadow-sm">
+            <div className="flex items-center gap-2 bg-slate-50 px-3 md:px-4 py-2 rounded-full border border-slate-200 hover:scale-102 transition-transform shadow-sm">
               <Coins className="w-4 h-4 text-amber-500" />
               <span className="text-xs font-semibold text-slate-700">
-                Số dư:{' '}
+                <span className="hidden sm:inline">Số dư:{' '}</span>
                 {isGameProfileSyncing ? (
                   <RefreshCw className="inline-block w-3.5 h-3.5 text-indigo-600 animate-spin align-[-2px]" />
                 ) : (
@@ -738,7 +738,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     initial={{ opacity: 0, y: 8, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                    className="absolute right-0 top-12 z-[9999] w-[min(92vw,420px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                    className="fixed right-3 top-20 z-[9999] w-[calc(100vw-1.5rem)] max-w-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:right-0 sm:top-12 sm:w-[min(92vw,420px)]"
                   >
                     <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                       <div>
@@ -754,7 +754,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       </button>
                     </div>
 
-                    <div className="max-h-[420px] overflow-y-auto">
+                    <div className="max-h-[min(70vh,420px)] overflow-y-auto">
                       {userNotifications.length === 0 ? (
                         <div className="px-4 py-10 text-center text-sm font-semibold text-slate-400">
                           Chua co thong bao nao.
@@ -804,7 +804,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             {/* Avatar Profile */}
             <div 
               onClick={() => setActiveTab('Cài đặt')}
-              className="w-11 h-11 rounded-[14px] bg-white border border-slate-200 overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors shadow-[0_10px_30px_rgba(0,0,0,.08)]"
+              className="w-10 h-10 md:w-11 md:h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 overflow-hidden cursor-pointer hover:border-indigo-500 transition-colors shadow-[0_10px_30px_rgba(0,0,0,.08)]"
             >
               <img 
                 alt={`${linkedMcName || 'Steve'} Minecraft avatar`}
@@ -818,7 +818,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
         </header>
 
         {/* ACTIVE MODULE CONTAINER */}
-        <main className="p-8 flex-grow flex flex-col gap-10">
+        <main className="p-4 sm:p-6 md:p-8 flex-grow flex flex-col gap-6 md:gap-10">
           
           <AnimatePresence mode="wait">
             
@@ -830,10 +830,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.4 }}
-                className="flex flex-col gap-8"
+                className="flex flex-col gap-6 md:gap-8"
               >
                 {/* Hero section */}
-                <section className="bg-white rounded-2xl p-8 relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8 border border-slate-200/80 shadow-lg">
+                <section className="bg-white rounded-2xl p-5 sm:p-6 md:p-8 relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-6 md:gap-8 border border-slate-200/80 shadow-lg">
                   <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
                   <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -842,11 +842,11 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <span className="text-[10px] uppercase tracking-widest font-mono text-indigo-600 font-bold animate-pulse">Online Portal Live</span>
                     </div>
 
-                    <h2 className="font-display font-extrabold text-3xl text-slate-900 mb-3 leading-tight">
+                    <h2 className="font-display font-extrabold text-2xl md:text-3xl text-slate-900 mb-3 leading-tight">
                       Chào mừng trở lại, <span className="text-indigo-600 font-black">{linkedMcName}</span>
                     </h2>
                     
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4">
+                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4">
                       <span>Tham gia: {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'Mới tham gia'}</span>
                       <span className="w-1 h-1 bg-slate-300 rounded-full" />
                       <span>Mã công dân: {user._id?.substring(0, 8)}</span>
@@ -862,7 +862,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           setStoreFilter('All');
                           setActiveTab('Cửa hàng');
                         }}
-                        className="py-2.5 px-5 bg-indigo-600 hover:bg-slate-900 text-white font-display font-bold text-xs tracking-wider uppercase rounded shadow-md transition-all cursor-pointer"
+                        className="min-h-11 w-full sm:w-auto py-2.5 px-5 bg-indigo-600 hover:bg-slate-900 text-white font-display font-bold text-xs tracking-wider uppercase rounded shadow-md transition-all cursor-pointer"
                       >
                         Khám phá Cửa hàng
                       </button>
@@ -870,7 +870,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     </div>
                   </div>
 
-                  <div className="z-10 w-full lg:w-auto flex justify-center">
+                  <div className="z-10 hidden w-full justify-center md:flex lg:w-auto">
                     <div className="w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 bg-white border border-slate-100 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,.08)] relative overflow-hidden flex items-center justify-center group">
                       <img 
                         alt={`${linkedMcName || 'Steve'} Minecraft avatar`}
@@ -884,7 +884,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 </section>
 
                 {/* Stats cards Grid */}
-                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                   
                   {/* Card 1: Balance */}
                   <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden group border border-slate-200/80 shadow-md">
@@ -987,7 +987,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 </section>
 
                 {/* Dashboard layout lower area */}
-                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                   
                   {/* Bento actions */}
                   <div className="lg:col-span-1 flex flex-col gap-4">
@@ -1001,7 +1001,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         setStoreFilter('Coins');
                         setActiveTab('Cửa hàng');
                       }}
-                      className="bg-white rounded-xl p-4 flex items-center justify-between group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-indigo-600 cursor-pointer"
+                      className="min-h-[72px] bg-white rounded-xl p-4 flex items-center justify-between gap-3 group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-indigo-600 cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform border border-indigo-100">
@@ -1021,7 +1021,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         setStoreFilter('Rank');
                         setActiveTab('Cửa hàng');
                       }}
-                      className="bg-white rounded-xl p-4 flex items-center justify-between group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-indigo-600 cursor-pointer"
+                      className="min-h-[72px] bg-white rounded-xl p-4 flex items-center justify-between gap-3 group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-indigo-600 cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 group-hover:scale-105 transition-transform">
@@ -1045,7 +1045,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         setStoreFilter('BattlePass');
                         setActiveTab('Cửa hàng');
                       }}
-                      className="bg-white rounded-xl p-4 flex items-center justify-between group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-amber-500 cursor-pointer"
+                      className="min-h-[72px] bg-white rounded-xl p-4 flex items-center justify-between gap-3 group hover:bg-slate-50 transition-all outline-none text-left border border-slate-200/80 shadow-sm border-l-4 border-l-amber-500 cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform">
@@ -1068,7 +1068,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     </h3>
 
                     {/* Activity Ledger block */}
-                    <div className="bg-white rounded-2xl p-6 flex flex-col border border-slate-200/80 shadow-md h-full justify-between">
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 flex flex-col border border-slate-200/80 shadow-md h-full justify-between">
                       <div>
                         <div className="flex justify-between items-center mb-4">
                           <h4 className="font-display font-bold text-sm text-slate-700 uppercase tracking-wide">
@@ -1082,8 +1082,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           </button>
                         </div>
 
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
+                        <div className="mobile-table-scroll overflow-x-auto">
+                          <table className="min-w-[640px] w-full text-left border-collapse">
                             <thead>
                               <tr className="border-b border-slate-100 text-[11px] text-slate-400">
                                 <th className="py-3 px-4 font-bold uppercase">Loại</th>
@@ -1144,7 +1144,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                             </p>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-3 gap-4 items-end pt-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end pt-2">
                             {monthlyTopByRank.get(2) ? (
                               <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center flex flex-col items-center relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-6 h-6 bg-slate-200 text-slate-600 rounded-bl text-xs font-black flex items-center justify-center">2</div>
@@ -1204,12 +1204,12 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.3 }}
-                className="flex flex-col gap-8"
+                className="flex flex-col gap-6 md:gap-8"
               >
                 
                 {/* Store layout filters header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
                     
                     {/* Filter buttons */}
                     {(['All', 'Rank', 'BattlePass', 'Cosmetic', 'Coins'] as const).map(f => (
@@ -1222,7 +1222,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           }
                           setStoreFilter(f);
                         }}
-                        className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        className={`min-h-11 px-3 sm:px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                           storeFilter === f 
                           ? 'bg-indigo-600 text-white' 
                           : 'bg-slate-50 text-slate-600 hover:bg-slate-150 border border-slate-200/50'
@@ -1242,7 +1242,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <input
                       type="text"
                       placeholder="Tìm kiếm vật phẩm..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 md:py-2 pl-9 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                     />
@@ -1250,7 +1250,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 </div>
 
                 {/* Grid items listing */}
-                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {filteredStoreItems.map((item) => {
                     const isPurchasable = item.currency === 'USD' || userProfile.balance >= item.price;
                     const discountPercent = Number(item.discountPercent || 0);
@@ -1266,7 +1266,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       <div 
                         key={item.id}
                         onClick={() => handlePurchaseItem(item)}
-                        className={`rounded-2xl p-6 flex flex-col justify-between border hover:scale-[1.01] transition-all relative group cursor-pointer ${
+                        className={`rounded-2xl p-5 md:p-6 flex flex-col justify-between border hover:scale-[1.01] transition-all relative group cursor-pointer ${
                           hasDiscountPromotion
                             ? 'border-red-400/35 bg-[linear-gradient(180deg,#fff7f7_0%,#ffffff_100%)] shadow-[0_10px_30px_rgba(239,68,68,0.12)] hover:border-red-400/60'
                             : 'bg-white border-slate-200/80 hover:border-indigo-300 shadow-md'
@@ -1297,10 +1297,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           </div>
 
                           <div>
-                            <h4 className="font-display font-extrabold text-slate-900 text-base">
+                            <h4 className="break-words font-display font-extrabold text-slate-900 text-base">
                               {item.name}
                             </h4>
-                            <p className="text-xs text-slate-500 mt-2 leading-relaxed font-medium">
+                            <p className="break-words text-xs text-slate-500 mt-2 leading-relaxed font-medium">
                               {item.description}
                             </p>
                             {item.type === 'Coins' && (
@@ -1317,12 +1317,12 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         </div>
 
                         {/* Card bottom details */}
-                        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                          <div className="flex flex-col">
+                        <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 flex flex-col">
                             <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-semibold">Đơn giá</span>
                             {hasDiscountPromotion ? (
                               <>
-                                <span className="text-xl font-black font-mono text-red-600">
+                                <span className="break-words text-xl font-black font-mono text-red-600">
                                   {formatVND(finalPrice)}
                                 </span>
                                 <span className="text-xs font-bold font-mono text-slate-400 line-through">
@@ -1330,7 +1330,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                                 </span>
                               </>
                             ) : (
-                              <span className="text-lg font-black font-mono text-slate-950">
+                              <span className="break-words text-lg font-black font-mono text-slate-950">
                                 {item.currency === 'USD' || item.price > 1000 ? formatVND(item.price) : `${item.price.toLocaleString('vi-VN')} Xu`}
                               </span>
                             )}
@@ -1338,7 +1338,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
                           <button
                             onClick={() => handlePurchaseItem(item)}
-                            className={`py-2 px-4 rounded-lg font-display font-bold text-xs uppercase tracking-wide transition-all cursor-pointer ${
+                            className={`min-h-11 w-full sm:w-auto py-2 px-4 rounded-lg font-display font-bold text-xs uppercase tracking-wide transition-all cursor-pointer ${
                               item.currency === 'USD'
                               ? 'bg-indigo-600 text-white hover:bg-slate-900 shadow shadow-indigo-150'
                               : isPurchasable 
@@ -1388,7 +1388,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="bg-white rounded-2xl p-8 border border-slate-200/80 shadow-md"
+                className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-md"
               >
                 <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                   <div>
@@ -1401,16 +1401,16 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   </div>
                   
                   {/* Ledger statistics indicators */}
-                  <div className="flex gap-4">
-                    <div className="bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-200 text-right font-mono">
+                  <div className="flex w-full gap-4 sm:w-auto">
+                    <div className="w-full bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-200 text-right font-mono sm:w-auto">
                       <span className="text-[10px] uppercase text-slate-400 block font-bold">Số giao dịch</span>
                       <span className="text-sm font-black text-slate-800">{transactions.length} lượt</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                <div className="mobile-table-scroll overflow-x-auto">
+                  <table className="min-w-[760px] w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-100 text-[11px] text-slate-400 uppercase font-bold text-center">
                         <th className="py-3.5 px-4 text-left">Mã đơn</th>
@@ -1490,11 +1490,11 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+                className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8"
               >
                 
                 {/* Left grid: general profile form */}
-                <div className="lg:col-span-2 bg-white rounded-2xl p-8 flex flex-col gap-6 border border-slate-200 shadow-md">
+                <div className="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 md:p-8 flex flex-col gap-6 border border-slate-200 shadow-md">
                   <h3 className="font-display font-extrabold text-lg text-slate-950 uppercase tracking-wider mb-2">
                     Thiết lập tài khoản người chơi
                   </h3>
@@ -1561,7 +1561,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     <div className="pt-4 pb-8 border-b border-slate-100">
                       <button 
                         type="submit"
-                        className="py-3 px-6 bg-indigo-600 text-white font-bold rounded-lg uppercase tracking-wider hover:bg-slate-900 shadow shadow-indigo-100 transition-all cursor-pointer"
+                        className="min-h-11 w-full sm:w-auto py-3 px-6 bg-indigo-600 text-white font-bold rounded-lg uppercase tracking-wider hover:bg-slate-900 shadow shadow-indigo-100 transition-all cursor-pointer"
                       >
                         Lưu thông tin cập nhật
                       </button>
@@ -1625,8 +1625,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
         </main>
 
         {/* FOOTER */}
-        <footer className="mt-auto border-t border-slate-200 bg-white shadow-inner z-10 text-slate-400 py-12">
-          <div className="max-w-7xl mx-auto px-8">
+        <footer className="mt-auto border-t border-slate-200 bg-white shadow-inner z-10 text-slate-400 py-10 md:py-12">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
               
               <div className="md:col-span-1 space-y-4">
@@ -1700,22 +1700,22 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-start justify-center overflow-y-auto p-2 sm:items-center sm:p-4"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="relative z-[1010] bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+              className="relative z-[1010] bg-white rounded-2xl sm:rounded-3xl w-full max-w-2xl max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
             >
-              <div className="relative min-h-40 bg-[linear-gradient(135deg,#111827,#1f2937)] overflow-hidden shrink-0 px-8 py-8">
+              <div className="relative min-h-32 sm:min-h-40 bg-[linear-gradient(135deg,#111827,#1f2937)] overflow-hidden shrink-0 px-5 py-6 sm:px-8 sm:py-8">
                 <PromotionBadge
                   badge={getPromotionBadge(selectedDetail)}
                   style={{ top: 16, right: 64, maxWidth: 'calc(100% - 104px)' }}
                 />
                 <button 
                   onClick={closeDetailModal}
-                  className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors backdrop-blur-md"
+                  className="absolute top-4 right-4 min-h-10 min-w-10 p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors backdrop-blur-md"
                 >
                   <X size={20} />
                 </button>
@@ -1723,7 +1723,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   <span className="px-3 py-1 bg-indigo-600 text-[10px] font-black text-white rounded-full uppercase tracking-widest mb-2 inline-block">
                     {selectedDetail.category || selectedDetail.type}
                   </span>
-                  <h3 className="text-3xl font-black text-white uppercase tracking-tight">{selectedDetail.name}</h3>
+                  <h3 className="break-words text-xl sm:text-3xl font-black text-white uppercase tracking-tight">{selectedDetail.name}</h3>
                   {detailModalStep === 'player-check' && (
                     <p className="text-xs text-slate-300 mt-2 font-semibold uppercase tracking-wider">
                       Kiểm tra player Minecraft
@@ -1734,8 +1734,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
               {detailModalStep === 'detail' ? (
               <>
-              <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="p-5 sm:p-8 overflow-y-auto custom-scrollbar flex-grow">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                   <div className="space-y-6">
                     <div>
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Mô tả gói nạp</h4>
@@ -1769,16 +1769,16 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           </div>
                         </>
                       )}
-                      <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+                      <div className="mt-3 pt-3 border-t border-slate-200 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-[10px] font-black text-slate-400 uppercase">Giá thanh toán</span>
-                        <span className="text-xl font-black text-indigo-600">{formatVND(selectedDetail.price)}</span>
+                        <span className="break-words text-xl font-black text-indigo-600">{formatVND(selectedDetail.price)}</span>
                       </div>
                     </div>
 
                     {selectedDetail.items && selectedDetail.items.length > 0 && (
                       <div>
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vật phẩm đi kèm</h4>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {selectedDetail.items.map((item, idx) => (
                             <div key={`${item}-${idx}`} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200">
                               • {item}
@@ -1820,10 +1820,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 </div>
               </div>
 
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0">
+              <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 sm:gap-4 shrink-0">
                 <button 
                   onClick={closeDetailModal}
-                  className="flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
+                  className="min-h-12 flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
                 >
                   Đóng
                 </button>
@@ -1834,7 +1834,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                     setVerifyError('');
                     setDetailModalStep('player-check');
                   }}
-                  className="flex-[2] py-3.5 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-200 hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+                  className="min-h-12 flex-[2] py-3.5 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-200 hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
                 >
                   <PlusCircle size={16} />
                   Thanh toán ngay
@@ -1843,8 +1843,8 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
               </>
               ) : (
               <>
-                <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="p-5 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar flex-grow">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Giá thanh toán</span>
                       <span className="text-lg font-black text-slate-900 font-mono">{formatVND(selectedDetail.price)}</span>
@@ -1878,7 +1878,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                           : <Users className="w-4 h-4 text-indigo-600" />
                         }
                       </div>
-                      <span className="text-sm font-black text-slate-900 flex-1">{linkedMcName}</span>
+                      <span className="min-w-0 break-words text-sm font-black text-slate-900 flex-1">{linkedMcName}</span>
                       {playerConfirmed && (
                         <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Đã xác nhận</span>
                       )}
@@ -1889,7 +1889,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                         type="button"
                         onClick={handleVerifyPlayer}
                         disabled={isVerifyingPlayer || !linkedMcName}
-                        className="w-full py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider hover:bg-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        className="w-full min-h-11 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider hover:bg-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                       >
                         {isVerifyingPlayer ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                         {isVerifyingPlayer ? 'Đang kiểm tra...' : 'Kiểm tra player'}
@@ -1902,14 +1902,14 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                   </div>
                 </div>
 
-                <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0">
+                <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 sm:gap-4 shrink-0">
                   <button
                     onClick={() => {
                       setDetailModalStep('detail');
                       setPlayerConfirmed(false);
                       setVerifyError('');
                     }}
-                    className="flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
+                    className="min-h-12 flex-1 py-3.5 bg-white text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors"
                   >
                     Quay lại
                   </button>
@@ -1919,7 +1919,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       handleConfirmPurchase(selectedDetail);
                     }}
                     disabled={isPurchasing || !linkedMcName || !playerConfirmed}
-                    className={`flex-[2] py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                    className={`min-h-12 flex-[2] py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
                       !isPurchasing && linkedMcName && playerConfirmed
                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-slate-900'
                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
@@ -1942,16 +1942,16 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 text-slate-800"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-start justify-center overflow-y-auto p-2 text-slate-800 sm:items-center sm:p-4"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl p-0 w-full max-w-lg shadow-2xl border border-white/20 overflow-hidden"
+              className="bg-white rounded-2xl sm:rounded-3xl p-0 w-full max-w-lg max-h-[calc(100dvh-1rem)] overflow-hidden flex flex-col shadow-2xl border border-white/20"
             >
               {/* Header with Image/Icon */}
-              <div className="relative h-40 bg-indigo-600 flex items-center justify-center">
+              <div className="relative h-32 sm:h-40 bg-indigo-600 flex shrink-0 items-center justify-center">
                 <PromotionBadge
                   badge={getPromotionBadge(selectedPackage)}
                   style={{ left: 14, right: 'auto' }}
@@ -1971,15 +1971,15 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                 </div>
                 <button 
                   onClick={resetPurchaseModal}
-                  className="absolute right-4 top-4 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border border-white/10"
+                  className="absolute right-4 top-4 min-h-10 min-w-10 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border border-white/10"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-5 sm:p-8 space-y-6 overflow-y-auto">
                 {/* Details */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Giá thanh toán</span>
                     <span className="text-lg font-black text-slate-900 font-mono">{formatVND(selectedPackage.price)}</span>
@@ -2023,7 +2023,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                          : <Users className="w-4 h-4 text-indigo-600" />
                        }
                      </div>
-                     <span className="text-sm font-black text-slate-900 flex-1">{linkedMcName}</span>
+                     <span className="min-w-0 break-words text-sm font-black text-slate-900 flex-1">{linkedMcName}</span>
                      {playerConfirmed && (
                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Đã xác nhận</span>
                      )}
@@ -2037,7 +2037,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                        type="button"
                        onClick={handleVerifyPlayer}
                        disabled={isVerifyingPlayer || !linkedMcName}
-                       className="w-full py-3.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold uppercase tracking-wider transition-all cursor-pointer text-xs border border-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                       className="w-full min-h-12 py-3.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold uppercase tracking-wider transition-all cursor-pointer text-xs border border-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                      >
                        {isVerifyingPlayer
                          ? <><RefreshCw className="w-4 h-4 animate-spin" /> Đang kiểm tra...</>
@@ -2053,11 +2053,11 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
                 {/* Actions */}
                 <div className="pt-2 flex flex-col gap-3">
-                  <div className="flex gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row">
                     <button
                       type="button"
                       onClick={resetPurchaseModal}
-                      className="flex-1 py-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase transition-colors cursor-pointer text-xs"
+                      className="min-h-12 flex-1 py-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase transition-colors cursor-pointer text-xs"
                     >
                       Hủy
                     </button>
@@ -2065,7 +2065,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
                       type="button"
                       onClick={() => handleConfirmPurchase()}
                       disabled={isPurchasing || !linkedMcName || !playerConfirmed}
-                      className={`flex-1 py-4 rounded-2xl font-display font-bold uppercase tracking-widest transition-all cursor-pointer text-xs shadow-lg ${
+                      className={`min-h-12 flex-1 py-4 rounded-2xl font-display font-bold uppercase tracking-widest transition-all cursor-pointer text-xs shadow-lg ${
                         !isPurchasing && linkedMcName && playerConfirmed
                         ? 'bg-indigo-600 text-white hover:bg-slate-900 shadow-indigo-200' 
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
@@ -2247,7 +2247,7 @@ function ChangePasswordForm({ triggerNotification }: { triggerNotification: (msg
         <button 
           type="submit"
           disabled={isLoading || !isFormValid}
-          className="py-3 px-8 bg-slate-900 text-white font-black rounded-xl uppercase tracking-widest hover:bg-indigo-600 shadow-lg shadow-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
+          className="min-h-11 w-full sm:w-auto py-3 px-8 bg-slate-900 text-white font-black rounded-xl uppercase tracking-widest hover:bg-indigo-600 shadow-lg shadow-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>

@@ -120,49 +120,49 @@ export default function MainLayout({ children, user, onLogout }: MainLayoutProps
       </aside>
 
       {/* MOBILE HEADER */}
-      <header className="md:hidden bg-[#0f172a] text-white border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
+      <header className="md:hidden bg-[#0f172a] text-white border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex min-w-0 items-center gap-2">
            <img src="/logo.png" alt="Emerald Realm logo" className="w-8 h-8 rounded-lg object-cover" />
-           <span className="font-black text-indigo-400 tracking-wider">EMERALD REALM</span>
+           <span className="truncate font-black text-indigo-400 tracking-wider">EMERALD REALM</span>
         </div>
-        <button onClick={onLogout} className="text-red-400">
+        <button onClick={onLogout} className="min-h-11 min-w-11 rounded-xl text-red-400 flex items-center justify-center">
           <LogOut className="w-5 h-5" />
         </button>
       </header>
 
       {/* MOBILE NAV BAR */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0f172a] border-t border-slate-800 z-50 flex justify-around py-3">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0f172a] border-t border-slate-800 z-50 flex justify-around px-1 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         {navItems.map((item) => (
           <button
             key={item.label}
             onClick={() => handleNavClick(item)}
-            className={`flex flex-col items-center gap-1 ${isActive(item.path, item.state?.tab) ? 'text-indigo-400' : 'text-slate-400'}`}
+            className={`min-h-[54px] flex-1 flex flex-col items-center justify-center gap-1 px-1 ${isActive(item.path, item.state?.tab) ? 'text-indigo-400' : 'text-slate-400'}`}
           >
             {item.icon}
-            <span className="text-[10px] font-semibold">{item.label}</span>
+            <span className="max-w-full truncate text-[10px] font-semibold">{item.label}</span>
           </button>
         ))}
       </div>
 
       {/* CONTENT AREA */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen relative">
-        <header className="bg-white border-b border-slate-200 flex justify-between items-center px-8 h-20 sticky top-0 z-40">
-           <div>
-              <h2 className="font-extrabold text-xl text-slate-900 tracking-tight">MineShop</h2>
+      <div className="flex-1 min-w-0 md:ml-64 flex flex-col min-h-screen relative">
+        <header className="bg-white border-b border-slate-200 flex justify-between items-center gap-3 px-4 md:px-8 min-h-16 md:h-20 py-3 md:py-0 sticky top-[57px] md:top-0 z-40">
+           <div className="min-w-0">
+              <h2 className="truncate font-extrabold text-lg md:text-xl text-slate-900 tracking-tight">MineShop</h2>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider hidden sm:block">
                 Xin chào, <span className="text-indigo-600">{user.username}</span>
               </p>
            </div>
 
-           <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-200">
+           <div className="flex shrink-0 items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 bg-slate-50 px-3 md:px-4 py-2 rounded-full border border-slate-200">
                 <Coins className="w-4 h-4 text-amber-500" />
                 <span className="text-xs font-bold text-slate-700">
                   <span className="text-indigo-600 text-sm font-mono">{balance.toLocaleString('vi-VN')}</span> Xu
                 </span>
               </div>
 
-              <div className="w-10 h-10 rounded-full border border-slate-200 overflow-hidden cursor-pointer shadow-sm">
+              <div className="w-10 h-10 shrink-0 rounded-full border border-slate-200 overflow-hidden cursor-pointer shadow-sm">
                 <img 
                   alt="Avatar" 
                   className="w-full h-full object-cover" 
