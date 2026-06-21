@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, type SyntheticEvent } from 'react';
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react';
 import { 
   Home, 
   ShoppingCart, 
@@ -282,6 +282,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Package Purchase States
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -311,6 +312,25 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
       month: '2-digit',
     });
   };
+
+  useEffect(() => {
+    if (!isNotificationOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (notificationMenuRef.current?.contains(target)) return;
+      setIsNotificationOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [isNotificationOpen]);
 
   const handleNotificationClick = async (item: NotificationItem) => {
     setSelectedNotificationId(item.receiptId);
@@ -716,7 +736,7 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
 
             {/* Bell Indicator */}
-            <div className="relative">
+            <div className="relative" ref={notificationMenuRef}>
               <button
                 onClick={() => setIsNotificationOpen((prev) => !prev)}
                 className="p-2 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors relative"
