@@ -86,7 +86,7 @@ export default function SuccessPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white border border-slate-200 rounded-[2.5rem] p-10 md:p-12 text-center shadow-2xl relative overflow-hidden"
+        className="max-w-md w-full bg-white border border-slate-200 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-10 md:p-12 text-center shadow-2xl relative overflow-hidden"
       >
         <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600" />
 
@@ -111,30 +111,30 @@ export default function SuccessPage() {
           Cảm ơn bạn đã ủng hộ Emerald Realms. Xu đã được cộng trực tiếp vào tài khoản của bạn.
         </p>
 
-        <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 text-left space-y-4 mb-10">
-          <div className="flex justify-between items-center text-xs">
+        <div className="bg-slate-50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-100 text-left space-y-4 mb-8 sm:mb-10">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Mã đơn hàng</span>
             <span className="text-slate-900 font-mono font-black">#{transaction.orderCode}</span>
           </div>
-          <div className="flex justify-between items-center text-xs">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Gói đã mua</span>
             <span className="text-slate-900 font-extrabold">{packageName}</span>
           </div>
-          <div className="flex justify-between items-center text-xs">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Số tiền</span>
             <span className="text-indigo-600 font-black text-lg">
               {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(transaction.amount)}
             </span>
           </div>
-          <div className="flex justify-between items-center text-xs">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Thời gian thanh toán</span>
             <span className="text-slate-700 font-semibold">{new Date(paidTime).toLocaleString('vi-VN')}</span>
           </div>
-          <div className="flex justify-between items-center text-xs">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Xu nhận được</span>
             <span className="text-emerald-600 font-black text-base">+{transaction.coinsChange?.toLocaleString('vi-VN')} Xu</span>
           </div>
-          <div className="flex justify-between items-center text-xs">
+          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center text-xs">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Trạng thái</span>
             <span className="text-emerald-600 font-black flex items-center gap-1">
               <CheckCircle2 size={12} />
@@ -146,14 +146,14 @@ export default function SuccessPage() {
         <div className="flex flex-col gap-3">
           <button
             onClick={() => window.location.href = '/'}
-            className="flex items-center justify-center gap-3 bg-indigo-600 hover:bg-slate-900 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-900/20 text-xs uppercase tracking-widest"
+            className="min-h-12 flex items-center justify-center gap-3 bg-indigo-600 hover:bg-slate-900 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-900/20 text-xs uppercase tracking-widest"
           >
             <Home size={18} />
             QUAY LẠI TRANG CHỦ
           </button>
           <button
             onClick={() => navigate('/', { state: { tab: 'Lịch sử' } })}
-            className="flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 font-bold py-4 rounded-2xl transition-all text-xs uppercase tracking-widest"
+            className="min-h-12 flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 font-bold py-4 rounded-2xl transition-all text-xs uppercase tracking-widest"
           >
             <HistoryIcon size={18} />
             LỊCH SỬ GIAO DỊCH

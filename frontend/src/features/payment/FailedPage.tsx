@@ -8,7 +8,7 @@ export default function FailedPage() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-white border border-slate-200 rounded-[2.5rem] p-10 text-center shadow-2xl relative overflow-hidden"
+        className="max-w-md w-full bg-white border border-slate-200 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-10 text-center shadow-2xl relative overflow-hidden"
       >
         <div className="absolute top-0 left-0 w-full h-2 bg-rose-500" />
         
@@ -24,14 +24,14 @@ export default function FailedPage() {
         <div className="flex flex-col gap-3">
           <Link 
             to="/" 
-            className="flex items-center justify-center gap-3 bg-indigo-600 hover:bg-slate-900 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-900/20 text-xs uppercase tracking-widest"
+            className="min-h-12 flex items-center justify-center gap-3 bg-indigo-600 hover:bg-slate-900 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-900/20 text-xs uppercase tracking-widest"
           >
             <RefreshCw size={18} />
             THỬ LẠI GIAO DỊCH
           </Link>
           <button 
             onClick={() => alert('Vui lòng liên hệ GM qua Discord/Fanpage')}
-            className="flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 font-bold py-4 rounded-2xl transition-all text-xs uppercase tracking-widest"
+            className="min-h-12 flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 font-bold py-4 rounded-2xl transition-all text-xs uppercase tracking-widest"
           >
             <MessageSquare size={18} />
             LIÊN HỆ HỖ TRỢ
@@ -41,4 +41,3 @@ export default function FailedPage() {
     </div>
   );
 }
-

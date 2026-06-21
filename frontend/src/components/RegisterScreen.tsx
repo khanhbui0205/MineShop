@@ -116,26 +116,26 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
         }}
       />
 
-      <main className="relative z-10 flex-grow flex items-center justify-center px-4 py-20 bg-slate-900/10 backdrop-blur-[3px]">
+      <main className="relative z-10 flex-grow flex items-center justify-center px-4 py-8 sm:py-14 md:py-20 bg-slate-900/10 backdrop-blur-[3px]">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-md"
+          className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md min-w-0"
         >
           {/* Header text container above cards */}
           <div className="text-center mb-8 flex flex-col items-center">
             <img src="/logo.png" alt="Emerald Realm logo" className="w-16 h-16 rounded-xl object-cover shadow-lg border border-slate-200 mb-4" />
-            <h1 className="font-display text-4xl font-extrabold text-indigo-600 tracking-tight mb-2">
+            <h1 className="break-words text-center font-display text-2xl sm:text-4xl font-extrabold text-indigo-600 tracking-tight mb-2 leading-tight">
               EMERALD REALM
             </h1>
-            <p className="text-sm font-medium text-slate-500 font-sans">
+            <p className="max-w-full break-words text-sm font-medium text-slate-500 font-sans">
               Đăng ký tài khoản tham gia thế giới Minecraft đỉnh cao.
             </p>
           </div>
 
           {/* Setup registration card (White card with clean border) */}
-          <div className="bg-white rounded-2xl p-8 shadow-2xl border border-slate-200/80">
+          <div className="min-w-0 bg-white rounded-2xl p-5 sm:p-8 shadow-2xl border border-slate-200/80">
             {errorMessage && (
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 text-xs p-3 rounded mb-5">
                 {errorMessage}
@@ -161,7 +161,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                     </span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <div className="relative group flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-600">
                       <User className="w-4 h-4" />
@@ -183,7 +183,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                     type="button"
                     onClick={handleVerifyMinecraft}
                     disabled={isChecking || username.trim().length < 3 || isVerified}
-                    className={`px-4 rounded-lg font-bold text-xs uppercase transition-all flex items-center justify-center min-w-[100px] ${
+                    className={`min-h-11 w-full px-4 rounded-lg font-bold text-xs uppercase transition-all flex items-center justify-center sm:w-auto sm:min-w-[100px] ${
                       isVerified 
                       ? 'bg-emerald-100 text-emerald-700 cursor-default' 
                       : 'bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer'
@@ -314,7 +314,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
                   onChange={(e) => setAgreeTerms(e.target.checked)}
                   className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                 />
-                <label className="ml-2.5 text-xs text-slate-500 font-sans leading-relaxed cursor-pointer" htmlFor="agree-terms">
+                <label className="min-w-0 break-words ml-2.5 text-xs text-slate-500 font-sans leading-relaxed cursor-pointer" htmlFor="agree-terms">
                   Tôi đồng ý với{' '}
                   <span onClick={() => alert('Chi tiết Điều khoản sẽ hiển thị khi server chính thức ra mắt.')} className="text-indigo-600 hover:text-indigo-700 transition-colors underline cursor-pointer font-medium">
                     Điều khoản Dịch vụ
@@ -330,7 +330,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
               <button 
                 type="submit"
                 disabled={!isFormValid || loading}
-                className={`w-full mt-2 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+                className={`w-full mt-2 min-h-11 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
                   isFormValid && !loading
                   ? 'bg-indigo-600 text-white hover:bg-slate-800 shadow-lg shadow-indigo-100 cursor-pointer' 
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
@@ -359,7 +359,7 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin }:
       </main>
 
       {/* Footer to mirror professional and clean presentation */}
-      <footer className="relative z-10 w-full bg-slate-900 text-slate-400 py-16 px-8 mt-auto">
+      <footer className="relative z-10 w-full bg-slate-900 text-slate-400 py-10 sm:py-16 px-4 sm:px-8 mt-auto">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
           
           <div className="space-y-4 col-span-1">
